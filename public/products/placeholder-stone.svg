@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1200" viewBox="0 0 960 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Blissfy.co stone product placeholder</title>
+  <desc id="desc">Warm stone editorial placeholder for Blissfy.co product photography.</desc>
+  <rect width="960" height="1200" fill="#D9D7D0"/>
+  <rect x="172" y="156" width="616" height="888" rx="304" fill="#FFFEFA" opacity="0.72"/>
+  <path d="M390 266h84l-22 660H320l70-660zM490 266h84l66 660H508l-18-660z" fill="#A59A86"/>
+  <rect x="380" y="246" width="198" height="38" rx="19" fill="#6F7254"/>
+  <rect x="308" y="930" width="152" height="18" rx="9" fill="#77756C"/>
+  <rect x="500" y="930" width="152" height="18" rx="9" fill="#77756C"/>
+</svg>

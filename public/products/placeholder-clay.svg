@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1200" viewBox="0 0 960 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Blissfy.co clay product placeholder</title>
+  <desc id="desc">Clay editorial placeholder for Blissfy.co product photography.</desc>
+  <rect width="960" height="1200" fill="#E6D6CD"/>
+  <rect x="212" y="160" width="536" height="888" rx="268" fill="#FFFEFA" opacity="0.72"/>
+  <path d="M392 290h176l104 628H288l104-628z" fill="#B9654A"/>
+  <path d="M372 438h216" stroke="#F7E7E4" stroke-width="16" stroke-linecap="round" opacity="0.72"/>
+  <path d="M328 918h304" stroke="#77756C" stroke-width="18" stroke-linecap="round" opacity="0.42"/>
+</svg>

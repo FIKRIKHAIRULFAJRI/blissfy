@@ -6,13 +6,14 @@ import { ProductCard } from "@/components/store/ProductCard";
 import { SectionHeading } from "@/components/store/SectionHeading";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { StoreHeader } from "@/components/store/StoreHeader";
-import {
-  featuredProducts,
-  homeCollections,
-  servicePromises,
-} from "@/lib/placeholders";
+import { getCatalogProducts } from "@/lib/products";
+import { homeCollections, servicePromises } from "@/lib/placeholders";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const featuredProducts = await getCatalogProducts({ limit: 4 });
+
   return (
     <>
       <StoreHeader />
@@ -37,11 +38,23 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-4">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-4">
+              {featuredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-8 text-center">
+              <h3 className="text-xl font-semibold text-ink">
+                Katalog belum tersedia
+              </h3>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-ink-soft">
+                Produk akan tampil di sini setelah data katalog dan stok ready
+                stock ditambahkan.
+              </p>
+            </div>
+          )}
         </section>
 
         <section className="container-page">

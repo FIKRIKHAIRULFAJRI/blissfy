@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1200" viewBox="0 0 960 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Blissfy.co olive product placeholder</title>
+  <desc id="desc">Muted olive editorial placeholder for Blissfy.co product photography.</desc>
+  <rect width="960" height="1200" fill="#C5C7B1"/>
+  <rect x="196" y="146" width="568" height="908" rx="284" fill="#FFFEFA" opacity="0.62"/>
+  <path d="M340 322h280l78 210-88 42 18 340H332l18-340-88-42 78-210z" fill="#6F7254"/>
+  <path d="M426 322c14 42 94 42 108 0" fill="none" stroke="#EFEEE9" stroke-width="18" stroke-linecap="round"/>
+  <rect x="386" y="538" width="188" height="92" rx="24" fill="#171713" opacity="0.14"/>
+  <rect x="374" y="914" width="212" height="18" rx="9" fill="#4F4E47"/>
+</svg>
