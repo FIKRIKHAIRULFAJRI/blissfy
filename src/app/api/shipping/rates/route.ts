@@ -4,6 +4,11 @@ import { validateShippingCart } from "@/lib/shipping/server";
 import { getShippingProvider } from "@/lib/shipping/provider";
 import { shippingRateRequestSchema } from "@/lib/shipping/schemas";
 import { ShippingProviderError, allowedCourierCodes } from "@/lib/shipping/types";
+import {
+  persistShippingQuotes,
+  scopeShippingQuotes,
+  type ShippingQuotePayload,
+} from "@/lib/orders/quote";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -23,7 +28,7 @@ export async function POST(request: Request) {
   try {
     const shippingCart = await validateShippingCart(parsed.data.items);
     const provider = getShippingProvider();
-    const quotes = await provider.getRates({
+    let quotes = await provider.getRates({
       originDistrictId: shippingCart.originDistrictId,
       destinationDistrictId: parsed.data.destinationDistrictId,
       weightGrams: shippingCart.totalWeightGrams,
@@ -36,6 +41,31 @@ export async function POST(request: Request) {
         message:
           "Layanan JNE atau J&T belum tersedia untuk alamat tujuan ini.",
         status: 422,
+      });
+    }
+
+    if (parsed.data.destination) {
+      const quotePayload: ShippingQuotePayload = {
+        destination: parsed.data.destination,
+        items: shippingCart.items.map((item) => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+        })),
+        totalProductWeightGram: shippingCart.totalProductWeightGrams,
+        packagingWeightGram: shippingCart.packagingWeightGrams,
+        totalWeightGram: shippingCart.totalWeightGrams,
+      };
+      quotes = scopeShippingQuotes(quotePayload, quotes);
+
+      await persistShippingQuotes({
+        destination: parsed.data.destination,
+        items: quotePayload.items,
+        originDistrictId: shippingCart.originDistrictId,
+        packagingWeightGram: shippingCart.packagingWeightGrams,
+        quotes,
+        totalProductWeightGram: shippingCart.totalProductWeightGrams,
+        totalWeightGram: shippingCart.totalWeightGrams,
       });
     }
 

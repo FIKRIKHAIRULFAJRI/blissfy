@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ChangeEvent, InputHTMLAttributes, ReactNode } from "react";
 import { useEffect, useState, useTransition } from "react";
@@ -57,9 +58,13 @@ const initialRatesState: ShippingRatesState = {
   totalWeightGrams: 0,
 };
 
+const checkoutIdempotencyStorageKey = "blissfy-checkout-idempotency-key";
+
 export function CheckoutView() {
+  const router = useRouter();
   const hydrated = useCartStore((state) => state.hydrated);
   const items = useCartStore((state) => state.items);
+  const clearCart = useCartStore((state) => state.clearCart);
   const syncValidatedItems = useCartStore((state) => state.syncValidatedItems);
   const [validation, setValidation] = useState<CartValidationResponse | null>(
     null,
@@ -72,6 +77,8 @@ export function CheckoutView() {
     useState<RegionState>(initialRegionState);
   const [shippingRates, setShippingRates] =
     useState<ShippingRatesState>(initialRatesState);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
     defaultValues: {
@@ -86,7 +93,7 @@ export function CheckoutView() {
       orderNote: "",
       termsAccepted: false,
     },
-    mode: "onBlur",
+    mode: "onChange",
   });
   const selectedProvinceId = useWatch({
     control: form.control,
@@ -104,8 +111,19 @@ export function CheckoutView() {
     control: form.control,
     name: "postalCode",
   });
+  const termsAccepted = useWatch({
+    control: form.control,
+    name: "termsAccepted",
+  });
   const selectedQuote = shippingRates.quotes.find(
     (quote) => quote.quoteId === shippingRates.selectedQuoteId,
+  );
+  const selectedProvince = provinces.data.find(
+    (province) => province.id === selectedProvinceId,
+  );
+  const selectedCity = cities.data.find((city) => city.id === selectedCityId);
+  const selectedDistrict = districts.data.find(
+    (district) => district.id === selectedDistrictId,
   );
   const totalTemporary =
     (validation?.summary.netSubtotal ?? 0) + (selectedQuote?.cost ?? 0);
@@ -188,7 +206,9 @@ export function CheckoutView() {
       selectedDistrict.postalCode !== "0" &&
       /^[0-9]{5}$/.test(selectedDistrict.postalCode)
     ) {
-      form.setValue("postalCode", selectedDistrict.postalCode);
+      form.setValue("postalCode", selectedDistrict.postalCode, {
+        shouldValidate: true,
+      });
     }
   }, [districts.data, form, selectedDistrictId]);
 
@@ -214,9 +234,91 @@ export function CheckoutView() {
     Boolean(selectedProvinceId) &&
     Boolean(selectedCityId) &&
     Boolean(selectedDistrictId);
+  const canCreateOrder =
+    canCheckShipping &&
+    Boolean(selectedQuote) &&
+    Boolean(termsAccepted) &&
+    form.formState.isValid;
 
-  function handleSubmit() {
-    return;
+  async function handleSubmit(values: CheckoutFormValues) {
+    if (
+      !canCreateOrder ||
+      !selectedQuote ||
+      !selectedProvince ||
+      !selectedCity ||
+      !selectedDistrict
+    ) {
+      setOrderError(
+        "Lengkapi data checkout dan pilih layanan pengiriman dahulu.",
+      );
+      return;
+    }
+
+    setOrderError(null);
+    setIsCreatingOrder(true);
+
+    try {
+      const idempotencyKey = getOrCreateCheckoutIdempotencyKey();
+      const response = await fetch("/api/orders", {
+        body: JSON.stringify({
+          idempotencyKey,
+          items: buildCartValidationPayload(items).items.map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          })),
+          recipient: {
+            recipientName: values.recipientName,
+            whatsapp: values.whatsapp,
+            email: values.email,
+            province: values.province,
+            city: values.city,
+            district: values.district,
+            postalCode: values.postalCode,
+            address: values.address,
+          },
+          orderNote: values.orderNote,
+          shippingQuoteId: selectedQuote.quoteId,
+          destination: {
+            provinceId: selectedProvince.id,
+            provinceName: selectedProvince.name,
+            cityId: selectedCity.id,
+            cityName: selectedCity.name,
+            districtId: selectedDistrict.id,
+            districtName: selectedDistrict.name,
+          },
+          termsAccepted: values.termsAccepted,
+        }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+      const body = (await response.json().catch(() => null)) as
+        | {
+            message?: string;
+            order?: {
+              accessToken: string;
+            };
+          }
+        | null;
+
+      if (!response.ok || !body?.order?.accessToken) {
+        throw new Error(body?.message ?? "Pesanan belum dapat dibuat.");
+      }
+
+      clearCart();
+      clearCheckoutIdempotencyKey();
+      router.push(`/payment/${body.order.accessToken}`);
+    } catch (error) {
+      setOrderError(
+        error instanceof Error
+          ? error.message
+          : "Pesanan belum dapat dibuat. Coba lagi.",
+      );
+    } finally {
+      setIsCreatingOrder(false);
+    }
   }
 
   async function handleCheckShipping() {
@@ -237,6 +339,17 @@ export function CheckoutView() {
       const response = await fetch("/api/shipping/rates", {
         body: JSON.stringify({
           destinationDistrictId: selectedDistrictId,
+          destination:
+            selectedProvince && selectedCity && selectedDistrict
+              ? {
+                  provinceId: selectedProvince.id,
+                  provinceName: selectedProvince.name,
+                  cityId: selectedCity.id,
+                  cityName: selectedCity.name,
+                  districtId: selectedDistrict.id,
+                  districtName: selectedDistrict.name,
+                }
+              : undefined,
           items: buildCartValidationPayload(items).items,
         }),
         headers: {
@@ -340,7 +453,10 @@ export function CheckoutView() {
           className={cn("mt-8 space-y-8", !canShowForm && "opacity-60")}
           onSubmit={form.handleSubmit(handleSubmit)}
         >
-          <fieldset disabled={!canShowForm} className="space-y-5">
+          <fieldset
+            disabled={!canShowForm || isCreatingOrder}
+            className="space-y-5"
+          >
             <FormSection title="Informasi penerima">
               <TextField
                 error={form.formState.errors.recipientName?.message}
@@ -555,19 +671,24 @@ export function CheckoutView() {
             </FormSection>
           </fieldset>
 
+          {orderError ? (
+            <div className="rounded-[var(--radius-lg)] bg-danger-bg p-4 text-sm font-medium text-danger">
+              {orderError}
+            </div>
+          ) : null}
           <button
             className={buttonClasses({
-              className: "w-full bg-surface-muted text-ink-muted",
+              className: "w-full",
               size: "large",
             })}
-            disabled
+            disabled={!canCreateOrder || isCreatingOrder}
             type="submit"
           >
-            Lanjut ke pembayaran QRIS
+            {isCreatingOrder ? "Membuat pesanan..." : "Buat pesanan"}
           </button>
           <p className="text-sm leading-6 text-ink-muted">
-            Order final, reservasi stok, dan pembayaran QRIS tetap dinonaktifkan
-            sampai tahap berikutnya.
+            Setelah pesanan dibuat, stok ditahan selama 10 menit. QRIS Midtrans
+            akan diaktifkan pada tahap berikutnya.
           </p>
         </form>
       </section>
@@ -633,7 +754,11 @@ export function CheckoutView() {
           <p className="mt-4 rounded-[var(--radius-md)] bg-warning-bg p-3 text-sm leading-6 text-warning">
             Pilih layanan pengiriman sebelum tahap order final nanti.
           </p>
-        ) : null}
+        ) : (
+          <p className="mt-4 rounded-[var(--radius-md)] bg-info-bg p-3 text-sm leading-6 text-info">
+            Pesanan akan dibuat dengan snapshot harga, stok, dan ongkir saat ini.
+          </p>
+        )}
       </aside>
     </div>
   );
@@ -664,6 +789,22 @@ async function validateCartItems(
   }
 
   return (await response.json()) as CartValidationResponse;
+}
+
+function getOrCreateCheckoutIdempotencyKey() {
+  const existing = window.localStorage.getItem(checkoutIdempotencyStorageKey);
+
+  if (existing) {
+    return existing;
+  }
+
+  const nextKey = globalThis.crypto.randomUUID();
+  window.localStorage.setItem(checkoutIdempotencyStorageKey, nextKey);
+  return nextKey;
+}
+
+function clearCheckoutIdempotencyKey() {
+  window.localStorage.removeItem(checkoutIdempotencyStorageKey);
 }
 
 async function loadRegions({

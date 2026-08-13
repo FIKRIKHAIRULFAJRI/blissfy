@@ -2,6 +2,7 @@ import { z } from "zod";
 import { cartValidationItemSchema } from "@/lib/cart/schemas";
 
 const databaseId = z.string().trim().min(1);
+const regionName = z.string().trim().min(1);
 
 export const regionQuerySchema = z.discriminatedUnion("level", [
   z.object({
@@ -19,6 +20,16 @@ export const regionQuerySchema = z.discriminatedUnion("level", [
 
 export const shippingRateRequestSchema = z.object({
   destinationDistrictId: databaseId,
+  destination: z
+    .object({
+      provinceId: databaseId,
+      provinceName: regionName,
+      cityId: databaseId,
+      cityName: regionName,
+      districtId: databaseId,
+      districtName: regionName,
+    })
+    .optional(),
   items: z.array(cartValidationItemSchema).min(1).max(50),
 });
 
