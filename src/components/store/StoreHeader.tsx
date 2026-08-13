@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonClasses } from "@/components/ui/button";
+import { CartCountBadge } from "@/components/store/CartCountBadge";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -83,12 +84,7 @@ export function StoreHeader() {
               href="/cart"
             >
               Keranjang
-              <span
-                aria-label="0 item di keranjang"
-                className="grid size-5 place-items-center rounded-full bg-ink text-[11px] text-surface"
-              >
-                0
-              </span>
+              <CartCountBadge />
             </Link>
           </div>
         </div>

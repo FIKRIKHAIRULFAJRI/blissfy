@@ -7,14 +7,18 @@
     "build": "next build",
     "admin:hash-password": "node scripts/hash-admin-password.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:cart": "tsx --test src/lib/cart/cart-contract.test.ts"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.7.1",
     "next": "16.3.0",
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "^4.4.3"
+    "react-hook-form": "^7.85.0",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -25,6 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }

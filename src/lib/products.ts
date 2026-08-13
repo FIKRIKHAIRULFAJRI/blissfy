@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { getPriceSnapshot, type DiscountForPricing } from "@/lib/pricing";
 
 export type CatalogProduct = {
   id: string;
@@ -69,14 +70,9 @@ type VariantRow = {
   isActive: boolean;
 };
 
-type DiscountRow = {
+type DiscountRow = DiscountForPricing & {
   id: string;
   productId: string;
-  type: "PERCENTAGE" | "FIXED_AMOUNT";
-  value: number;
-  startsAt: Date;
-  endsAt: Date;
-  isActive: boolean;
 };
 
 export async function getCatalogProducts({
@@ -87,12 +83,12 @@ export async function getCatalogProducts({
   const productsResult = await db.query<ProductRow>(
     `
       SELECT
-        p.id::text,
+        p.id::text AS id,
         p.slug,
         p.name,
         p.description,
         c.name AS "categoryName",
-        p."normalPrice"
+        p."normalPrice" AS "normalPrice"
       FROM products p
       INNER JOIN categories c ON c.id = p."categoryId"
       WHERE p."isActive" = true
@@ -111,12 +107,12 @@ export async function getProductBySlug(
   const productResult = await db.query<ProductRow>(
     `
       SELECT
-        p.id::text,
+        p.id::text AS id,
         p.slug,
         p.name,
         p.description,
         c.name AS "categoryName",
-        p."normalPrice"
+        p."normalPrice" AS "normalPrice"
       FROM products p
       INNER JOIN categories c ON c.id = p."categoryId"
       WHERE p.slug = $1
@@ -149,7 +145,7 @@ async function getProductRelations(productIds: string[]) {
     db.query<ImageRow>(
       `
         SELECT
-          id::text,
+          id::text AS id,
           "productId"::text AS "productId",
           url,
           "altText"
@@ -162,7 +158,7 @@ async function getProductRelations(productIds: string[]) {
     db.query<VariantRow>(
       `
         SELECT
-          id::text,
+          id::text AS id,
           "productId"::text AS "productId",
           sku,
           "colorName",
@@ -173,7 +169,6 @@ async function getProductRelations(productIds: string[]) {
           "isActive"
         FROM product_variants
         WHERE "productId"::text = ANY($1::text[])
-          AND "isActive" = true
         ORDER BY "colorName" ASC, size ASC
       `,
       [productIds],
@@ -181,7 +176,7 @@ async function getProductRelations(productIds: string[]) {
     db.query<DiscountRow>(
       `
         SELECT
-          id::text,
+          id::text AS id,
           "productId"::text AS "productId",
           type::text AS type,
           value,
@@ -248,12 +243,11 @@ function mapCatalogProduct(
   relations: Awaited<ReturnType<typeof getProductRelations>>,
 ): CatalogProduct {
   const images = relations.imagesByProduct.get(product.id) ?? [];
-  const variants = relations.variantsByProduct.get(product.id) ?? [];
+  const variants = (relations.variantsByProduct.get(product.id) ?? []).filter(
+    (variant) => variant.isActive,
+  );
   const discounts = relations.discountsByProduct.get(product.id) ?? [];
-  const activeDiscount = getActiveDiscount(discounts, new Date());
-  const salePrice = activeDiscount
-    ? applyDiscount(product.normalPrice, activeDiscount)
-    : product.normalPrice;
+  const price = getPriceSnapshot(product.normalPrice, discounts);
   const image = images[0];
   const totalStock = variants.reduce((sum, variant) => sum + variant.stock, 0);
 
@@ -264,8 +258,8 @@ function mapCatalogProduct(
     description: product.description,
     categoryName: product.categoryName,
     normalPrice: product.normalPrice,
-    salePrice,
-    discountLabel: activeDiscount ? getDiscountLabel(activeDiscount) : null,
+    salePrice: price.salePrice,
+    discountLabel: price.discountLabel,
     primaryImage: {
       url: image?.url ?? "/products/placeholder-ivory.svg",
       altText: image?.altText ?? product.name,
@@ -274,32 +268,6 @@ function mapCatalogProduct(
     totalStock,
     isAvailable: totalStock > 0,
   };
-}
-
-function getActiveDiscount(discounts: DiscountRow[], now: Date) {
-  return discounts.find(
-    (discount) =>
-      discount.isActive && discount.startsAt <= now && discount.endsAt >= now,
-  );
-}
-
-function applyDiscount(normalPrice: number, discount: DiscountRow) {
-  if (discount.type === "PERCENTAGE") {
-    return Math.max(
-      1,
-      normalPrice - Math.floor((normalPrice * discount.value) / 100),
-    );
-  }
-
-  return Math.max(1, normalPrice - discount.value);
-}
-
-function getDiscountLabel(discount: DiscountRow) {
-  if (discount.type === "PERCENTAGE") {
-    return `-${discount.value}%`;
-  }
-
-  return `Hemat ${formatCompactRupiah(discount.value)}`;
 }
 
 function uniqueColors(variants: VariantRow[]) {
@@ -312,14 +280,4 @@ function uniqueColors(variants: VariantRow[]) {
   }
 
   return Array.from(colors, ([name, value]) => ({ name, value })).slice(0, 4);
-}
-
-function formatCompactRupiah(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  })
-    .format(value)
-    .replace(/\s/g, "");
 }
