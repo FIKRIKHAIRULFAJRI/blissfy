@@ -1,6 +1,6 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+
+import { db } from "@/lib/db";
 
 export type CatalogProduct = {
   id: string;
@@ -41,64 +41,196 @@ export type ProductDetail = CatalogProduct & {
   }>;
 };
 
-const productInclude = {
-  category: true,
-  images: {
-    orderBy: [{ isPrimary: "desc" as const }, { sortOrder: "asc" as const }],
-  },
-  variants: {
-    where: { isActive: true },
-    orderBy: [{ colorName: "asc" as const }, { size: "asc" as const }],
-  },
-  discounts: {
-    where: { isActive: true },
-    orderBy: { startsAt: "desc" as const },
-  },
-} satisfies Prisma.ProductInclude;
+type ProductRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  categoryName: string;
+  normalPrice: number;
+};
 
-type ProductWithRelations = Prisma.ProductGetPayload<{
-  include: typeof productInclude;
-}>;
+type ImageRow = {
+  id: string;
+  productId: string;
+  url: string;
+  altText: string | null;
+};
+
+type VariantRow = {
+  id: string;
+  productId: string;
+  sku: string;
+  colorName: string;
+  colorHex: string | null;
+  size: string;
+  weightGram: number;
+  stock: number;
+  isActive: boolean;
+};
+
+type DiscountRow = {
+  id: string;
+  productId: string;
+  type: "PERCENTAGE" | "FIXED_AMOUNT";
+  value: number;
+  startsAt: Date;
+  endsAt: Date;
+  isActive: boolean;
+};
 
 export async function getCatalogProducts({
   limit,
 }: {
   limit?: number;
 } = {}): Promise<CatalogProduct[]> {
-  const products = await prisma.product.findMany({
-    where: { isActive: true },
-    include: productInclude,
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
+  const productsResult = await db.query<ProductRow>(
+    `
+      SELECT
+        p.id::text,
+        p.slug,
+        p.name,
+        p.description,
+        c.name AS "categoryName",
+        p."normalPrice"
+      FROM products p
+      INNER JOIN categories c ON c.id = p."categoryId"
+      WHERE p."isActive" = true
+      ORDER BY p."createdAt" DESC
+      ${limit ? "LIMIT $1" : ""}
+    `,
+    limit ? [limit] : [],
+  );
 
-  return products.map(mapCatalogProduct);
+  return mapCatalogProducts(productsResult.rows);
 }
 
 export async function getProductBySlug(
   slug: string,
 ): Promise<ProductDetail | null> {
-  const product = await prisma.product.findFirst({
-    where: { slug, isActive: true },
-    include: productInclude,
-  });
+  const productResult = await db.query<ProductRow>(
+    `
+      SELECT
+        p.id::text,
+        p.slug,
+        p.name,
+        p.description,
+        c.name AS "categoryName",
+        p."normalPrice"
+      FROM products p
+      INNER JOIN categories c ON c.id = p."categoryId"
+      WHERE p.slug = $1
+        AND p."isActive" = true
+      LIMIT 1
+    `,
+    [slug],
+  );
+  const product = productResult.rows[0];
 
   if (!product) {
     return null;
   }
 
-  return mapProductDetail(product);
+  const relations = await getProductRelations([product.id]);
+  return mapProductDetail(product, relations);
 }
 
-function mapProductDetail(product: ProductWithRelations): ProductDetail {
+async function mapCatalogProducts(products: ProductRow[]) {
+  if (products.length === 0) {
+    return [];
+  }
+
+  const relations = await getProductRelations(products.map((product) => product.id));
+  return products.map((product) => mapCatalogProduct(product, relations));
+}
+
+async function getProductRelations(productIds: string[]) {
+  const [imagesResult, variantsResult, discountsResult] = await Promise.all([
+    db.query<ImageRow>(
+      `
+        SELECT
+          id::text,
+          "productId"::text AS "productId",
+          url,
+          "altText"
+        FROM product_images
+        WHERE "productId"::text = ANY($1::text[])
+        ORDER BY "isPrimary" DESC, "sortOrder" ASC
+      `,
+      [productIds],
+    ),
+    db.query<VariantRow>(
+      `
+        SELECT
+          id::text,
+          "productId"::text AS "productId",
+          sku,
+          "colorName",
+          "colorHex",
+          size,
+          "weightGram",
+          stock,
+          "isActive"
+        FROM product_variants
+        WHERE "productId"::text = ANY($1::text[])
+          AND "isActive" = true
+        ORDER BY "colorName" ASC, size ASC
+      `,
+      [productIds],
+    ),
+    db.query<DiscountRow>(
+      `
+        SELECT
+          id::text,
+          "productId"::text AS "productId",
+          type::text AS type,
+          value,
+          "startsAt",
+          "endsAt",
+          "isActive"
+        FROM discounts
+        WHERE "productId"::text = ANY($1::text[])
+          AND "isActive" = true
+        ORDER BY "startsAt" DESC
+      `,
+      [productIds],
+    ),
+  ]);
+
   return {
-    ...mapCatalogProduct(product),
-    images: product.images.map((image) => ({
+    imagesByProduct: groupByProductId(imagesResult.rows),
+    variantsByProduct: groupByProductId(variantsResult.rows),
+    discountsByProduct: groupByProductId(discountsResult.rows),
+  };
+}
+
+function groupByProductId<T extends { productId: string }>(rows: T[]) {
+  const map = new Map<string, T[]>();
+
+  for (const row of rows) {
+    const current = map.get(row.productId) ?? [];
+    current.push(row);
+    map.set(row.productId, current);
+  }
+
+  return map;
+}
+
+function mapProductDetail(
+  product: ProductRow,
+  relations: Awaited<ReturnType<typeof getProductRelations>>,
+): ProductDetail {
+  const images = relations.imagesByProduct.get(product.id) ?? [];
+  const variants = relations.variantsByProduct.get(product.id) ?? [];
+
+  return {
+    ...mapCatalogProduct(product, relations),
+    images: images.map((image) => ({
       id: image.id,
       url: image.url,
       altText: image.altText ?? product.name,
     })),
-    variants: product.variants.map((variant) => ({
+    variants: variants.map((variant) => ({
       id: variant.id,
       sku: variant.sku,
       colorName: variant.colorName,
@@ -111,23 +243,26 @@ function mapProductDetail(product: ProductWithRelations): ProductDetail {
   };
 }
 
-function mapCatalogProduct(product: ProductWithRelations): CatalogProduct {
-  const activeDiscount = getActiveDiscount(product.discounts, new Date());
+function mapCatalogProduct(
+  product: ProductRow,
+  relations: Awaited<ReturnType<typeof getProductRelations>>,
+): CatalogProduct {
+  const images = relations.imagesByProduct.get(product.id) ?? [];
+  const variants = relations.variantsByProduct.get(product.id) ?? [];
+  const discounts = relations.discountsByProduct.get(product.id) ?? [];
+  const activeDiscount = getActiveDiscount(discounts, new Date());
   const salePrice = activeDiscount
     ? applyDiscount(product.normalPrice, activeDiscount)
     : product.normalPrice;
-  const image = product.images[0];
-  const totalStock = product.variants.reduce(
-    (sum, variant) => sum + variant.stock,
-    0,
-  );
+  const image = images[0];
+  const totalStock = variants.reduce((sum, variant) => sum + variant.stock, 0);
 
   return {
     id: product.id,
     slug: product.slug,
     name: product.name,
     description: product.description,
-    categoryName: product.category.name,
+    categoryName: product.categoryName,
     normalPrice: product.normalPrice,
     salePrice,
     discountLabel: activeDiscount ? getDiscountLabel(activeDiscount) : null,
@@ -135,26 +270,20 @@ function mapCatalogProduct(product: ProductWithRelations): CatalogProduct {
       url: image?.url ?? "/products/placeholder-ivory.svg",
       altText: image?.altText ?? product.name,
     },
-    colors: uniqueColors(product.variants),
+    colors: uniqueColors(variants),
     totalStock,
     isAvailable: totalStock > 0,
   };
 }
 
-function getActiveDiscount(
-  discounts: ProductWithRelations["discounts"],
-  now: Date,
-) {
+function getActiveDiscount(discounts: DiscountRow[], now: Date) {
   return discounts.find(
     (discount) =>
       discount.isActive && discount.startsAt <= now && discount.endsAt >= now,
   );
 }
 
-function applyDiscount(
-  normalPrice: number,
-  discount: ProductWithRelations["discounts"][number],
-) {
+function applyDiscount(normalPrice: number, discount: DiscountRow) {
   if (discount.type === "PERCENTAGE") {
     return Math.max(
       1,
@@ -165,7 +294,7 @@ function applyDiscount(
   return Math.max(1, normalPrice - discount.value);
 }
 
-function getDiscountLabel(discount: ProductWithRelations["discounts"][number]) {
+function getDiscountLabel(discount: DiscountRow) {
   if (discount.type === "PERCENTAGE") {
     return `-${discount.value}%`;
   }
@@ -173,7 +302,7 @@ function getDiscountLabel(discount: ProductWithRelations["discounts"][number]) {
   return `Hemat ${formatCompactRupiah(discount.value)}`;
 }
 
-function uniqueColors(variants: ProductWithRelations["variants"]) {
+function uniqueColors(variants: VariantRow[]) {
   const colors = new Map<string, string | null>();
 
   for (const variant of variants) {

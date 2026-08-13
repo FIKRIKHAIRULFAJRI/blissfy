@@ -369,7 +369,7 @@ Status pembayaran dan status pemenuhan harus disimpan terpisah. Pesanan dapat me
 
 | ID | Kebutuhan | Prioritas |
 |---|---|---|
-| FR-ADM-01 | Admin dapat login dan logout dengan aman. | Must |
+| FR-ADM-01 | Admin dapat login dan logout dengan aman menggunakan kredensial dari tabel `admin_users`. | Must |
 | FR-ADM-02 | Admin dapat membuat, mengubah, mengarsipkan, dan melihat produk. | Must |
 | FR-ADM-03 | Admin dapat mengelola kategori, gambar, varian, SKU, berat, dan stok. | Must |
 | FR-ADM-04 | Admin dapat mengatur harga dan periode diskon. | Must |
@@ -468,8 +468,8 @@ Status pembayaran dan status pemenuhan harus disimpan terpisah. Pesanan dapat me
 | Data fetching | TanStack Query bila diperlukan |
 | State keranjang | Zustand + localStorage |
 | Backend | Next.js Route Handlers / Server Actions sesuai kebutuhan |
-| ORM | Prisma |
 | Database | Supabase PostgreSQL |
+| Akses database | SQL parameterized query melalui koneksi server-side |
 | Penyimpanan gambar | Cloudinary |
 | Payment gateway | Midtrans QRIS |
 | API pengiriman | RajaOngkir/Komerce untuk layanan J&T dan JNE |
@@ -483,6 +483,7 @@ Status pembayaran dan status pemenuhan harus disimpan terpisah. Pesanan dapat me
 - Secret disimpan sebagai environment variables Vercel.
 - Gambar tidak disimpan pada filesystem deployment.
 - Database menggunakan koneksi yang sesuai lingkungan serverless atau connection pooling.
+- Skema database dan perubahan struktur dikelola melalui SQL migration Supabase.
 - Webhook harus merespons cepat; pekerjaan lanjutan yang berat perlu dipisahkan bila skala meningkat.
 - Scheduled job/cron dapat digunakan sebagai rekonsiliasi cadangan, bukan sumber utama status pembayaran.
 
@@ -490,7 +491,7 @@ Status pembayaran dan status pemenuhan harus disimpan terpisah. Pesanan dapat me
 
 | Entitas | Tujuan |
 |---|---|
-| `admins` | Menyimpan akun admin tunggal dan kredensial ter-hash. |
+| `admin_users` | Menyimpan akun admin tunggal dan password ter-hash. |
 | `categories` | Mengelompokkan produk. |
 | `products` | Menyimpan identitas, deskripsi, slug, status, dan harga dasar. |
 | `product_images` | Menyimpan URL serta urutan gambar. |
@@ -543,7 +544,7 @@ Semua endpoint admin membutuhkan autentikasi. Endpoint webhook tidak menggunakan
 - Session admin menggunakan cookie `HttpOnly`, `Secure`, dan `SameSite` yang sesuai.
 - Endpoint login dan checkout menggunakan rate limiting.
 - Input divalidasi di server.
-- Query database menggunakan ORM/parameterized query.
+- Query database menggunakan parameterized query.
 - Webhook diverifikasi dan diproses secara idempotent.
 - Akses pesanan pelanggan menggunakan token acak berentropi tinggi.
 - Data sensitif tidak ditulis lengkap dalam log.
@@ -741,7 +742,7 @@ KPI awal:
 ### Fase 1 - Fondasi
 
 - Inisialisasi Next.js, TypeScript, Tailwind, dan struktur proyek.
-- Konfigurasi PostgreSQL dan Prisma.
+- Konfigurasi Supabase PostgreSQL dan SQL migration.
 - Model produk, kategori, varian, gambar, dan admin.
 - Login admin.
 - CRUD katalog dan stok.
@@ -802,7 +803,7 @@ KPI awal:
 - Persetujuan dan aktivasi akun merchant Midtrans.
 - Kredensial produksi QRIS.
 - Akun serta paket API pengiriman.
-- Database PostgreSQL terkelola.
+- Database Supabase PostgreSQL.
 - Akun Cloudinary atau object storage.
 - Akun Vercel dan domain produksi.
 - Data produk, foto, harga, ukuran, berat, dan stok asli.
@@ -854,7 +855,7 @@ MVP dianggap selesai apabila:
 - Admin dapat mengelola produk serta memproses pesanan sampai resi.
 - Pelanggan dapat melacak pesanan melalui token rahasia.
 - Tidak ada secret di repository atau frontend bundle.
-- Database memiliki backup dan migration yang terdokumentasi.
+- Database Supabase memiliki backup dan SQL migration yang terdokumentasi.
 - Halaman privasi, syarat, pengiriman, retur, dan kontak tersedia.
 - Proses terjadwal untuk penghapusan atau anonimisasi data pribadi setelah 2 bulan telah diuji.
 - Aplikasi di-deploy di Vercel menggunakan HTTPS dan domain yang ditentukan.
