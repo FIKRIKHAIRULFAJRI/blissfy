@@ -2,26 +2,60 @@
 
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { InputHTMLAttributes, ReactNode } from "react";
+import type { ChangeEvent, InputHTMLAttributes, ReactNode } from "react";
 import { useEffect, useState, useTransition } from "react";
-import { useForm, type UseFormRegisterReturn } from "react-hook-form";
+import {
+  useForm,
+  useWatch,
+  type UseFormRegisterReturn,
+} from "react-hook-form";
 import {
   checkoutFormSchema,
   type CheckoutFormValues,
 } from "@/lib/cart/schemas";
 import type { CartValidationResponse } from "@/lib/cart/types";
 import { buildCartValidationPayload } from "@/lib/cart/contract";
-import {
-  ensureCartHydration,
-  useCartStore,
-} from "@/lib/cart/store";
+import { ensureCartHydration, useCartStore } from "@/lib/cart/store";
 import { formatRupiah } from "@/lib/pricing";
+import type { ShippingRateQuote, ShippingRegion } from "@/lib/shipping/types";
 import { buttonClasses } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
-  "mt-2 min-h-12 w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm text-ink outline-none focus:border-olive";
+  "mt-2 min-h-12 w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm text-ink outline-none focus:border-olive disabled:bg-surface-muted disabled:text-ink-muted";
+
+type RegionState = {
+  data: ShippingRegion[];
+  error: string | null;
+  loading: boolean;
+};
+
+type ShippingRatesState = {
+  error: string | null;
+  loading: boolean;
+  quotes: ShippingRateQuote[];
+  selectedQuoteId: string;
+  totalProductWeightGrams: number;
+  packagingWeightGrams: number;
+  totalWeightGrams: number;
+};
+
+const initialRegionState: RegionState = {
+  data: [],
+  error: null,
+  loading: false,
+};
+
+const initialRatesState: ShippingRatesState = {
+  error: null,
+  loading: false,
+  quotes: [],
+  selectedQuoteId: "",
+  totalProductWeightGrams: 0,
+  packagingWeightGrams: 0,
+  totalWeightGrams: 0,
+};
 
 export function CheckoutView() {
   const hydrated = useCartStore((state) => state.hydrated);
@@ -32,6 +66,12 @@ export function CheckoutView() {
   );
   const [cartError, setCartError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [provinces, setProvinces] = useState<RegionState>(initialRegionState);
+  const [cities, setCities] = useState<RegionState>(initialRegionState);
+  const [districts, setDistricts] =
+    useState<RegionState>(initialRegionState);
+  const [shippingRates, setShippingRates] =
+    useState<ShippingRatesState>(initialRatesState);
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
     defaultValues: {
@@ -43,13 +83,32 @@ export function CheckoutView() {
       district: "",
       postalCode: "",
       address: "",
-      village: "",
-      addressNote: "",
       orderNote: "",
       termsAccepted: false,
     },
     mode: "onBlur",
   });
+  const selectedProvinceId = useWatch({
+    control: form.control,
+    name: "province",
+  });
+  const selectedCityId = useWatch({
+    control: form.control,
+    name: "city",
+  });
+  const selectedDistrictId = useWatch({
+    control: form.control,
+    name: "district",
+  });
+  const postalCode = useWatch({
+    control: form.control,
+    name: "postalCode",
+  });
+  const selectedQuote = shippingRates.quotes.find(
+    (quote) => quote.quoteId === shippingRates.selectedQuoteId,
+  );
+  const totalTemporary =
+    (validation?.summary.netSubtotal ?? 0) + (selectedQuote?.cost ?? 0);
 
   useEffect(() => {
     ensureCartHydration();
@@ -68,6 +127,7 @@ export function CheckoutView() {
           setValidation(result);
           setCartError(null);
           syncValidatedItems(result.items);
+          resetShippingRates();
         })
         .catch((validationError: unknown) => {
           if (!controller.signal.aborted) {
@@ -82,6 +142,55 @@ export function CheckoutView() {
 
     return () => controller.abort();
   }, [hydrated, items, syncValidatedItems]);
+
+  useEffect(() => {
+    void loadRegions({
+      level: "province",
+      setState: setProvinces,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProvinceId) {
+      return;
+    }
+
+    void loadRegions({
+      level: "city",
+      parentId: selectedProvinceId,
+      setState: setCities,
+    });
+  }, [selectedProvinceId]);
+
+  useEffect(() => {
+    if (!selectedCityId) {
+      return;
+    }
+
+    void loadRegions({
+      level: "district",
+      parentId: selectedCityId,
+      setState: setDistricts,
+    });
+  }, [selectedCityId]);
+
+  useEffect(() => {
+    resetShippingRates();
+  }, [items, selectedDistrictId, postalCode]);
+
+  useEffect(() => {
+    const selectedDistrict = districts.data.find(
+      (district) => district.id === selectedDistrictId,
+    );
+
+    if (
+      selectedDistrict?.postalCode &&
+      selectedDistrict.postalCode !== "0" &&
+      /^[0-9]{5}$/.test(selectedDistrict.postalCode)
+    ) {
+      form.setValue("postalCode", selectedDistrict.postalCode);
+    }
+  }, [districts.data, form, selectedDistrictId]);
 
   const validationMatchesItems =
     validation?.items.length === items.length &&
@@ -100,9 +209,74 @@ export function CheckoutView() {
     validation?.summary.allValid &&
     !cartError &&
     !isPending;
+  const canCheckShipping =
+    canShowForm &&
+    Boolean(selectedProvinceId) &&
+    Boolean(selectedCityId) &&
+    Boolean(selectedDistrictId);
 
   function handleSubmit() {
     return;
+  }
+
+  async function handleCheckShipping() {
+    if (!canCheckShipping || !selectedDistrictId) {
+      setShippingRates((current) => ({
+        ...current,
+        error: "Lengkapi provinsi, kota/kabupaten, dan kecamatan dahulu.",
+      }));
+      return;
+    }
+
+    setShippingRates({
+      ...initialRatesState,
+      loading: true,
+    });
+
+    try {
+      const response = await fetch("/api/shipping/rates", {
+        body: JSON.stringify({
+          destinationDistrictId: selectedDistrictId,
+          items: buildCartValidationPayload(items).items,
+        }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+      const body = (await response.json().catch(() => null)) as
+        | {
+            message?: string;
+            quotes?: ShippingRateQuote[];
+            totalProductWeightGrams?: number;
+            packagingWeightGrams?: number;
+            totalWeightGrams?: number;
+          }
+        | null;
+
+      if (!response.ok || !body?.quotes) {
+        throw new Error(body?.message ?? "Ongkir belum dapat dihitung.");
+      }
+
+      setShippingRates({
+        error: null,
+        loading: false,
+        quotes: body.quotes,
+        selectedQuoteId: "",
+        totalProductWeightGrams: body.totalProductWeightGrams ?? 0,
+        packagingWeightGrams: body.packagingWeightGrams ?? 0,
+        totalWeightGrams: body.totalWeightGrams ?? 0,
+      });
+    } catch (error) {
+      setShippingRates({
+        ...initialRatesState,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Ongkir belum dapat dihitung. Coba lagi.",
+        loading: false,
+      });
+    }
   }
 
   if (!hydrated) {
@@ -196,20 +370,75 @@ export function CheckoutView() {
 
             <FormSection title="Alamat pengiriman">
               <div className="grid gap-5 md:grid-cols-2">
-                <TextField
+                <SelectField
                   error={form.formState.errors.province?.message}
                   label="Provinsi"
+                  loading={provinces.loading}
+                  options={provinces.data}
+                  placeholder="Pilih provinsi"
                   registration={form.register("province")}
+                  onValueChange={() => {
+                    form.setValue("city", "");
+                    form.setValue("district", "");
+                    form.setValue("postalCode", "");
+                    setCities(initialRegionState);
+                    setDistricts(initialRegionState);
+                    resetShippingRates();
+                  }}
+                  retry={() => {
+                    void loadRegions({
+                      level: "province",
+                      setState: setProvinces,
+                    });
+                  }}
+                  stateError={provinces.error}
                 />
-                <TextField
+                <SelectField
+                  disabled={!selectedProvinceId}
                   error={form.formState.errors.city?.message}
                   label="Kota/kabupaten"
+                  loading={cities.loading}
+                  options={cities.data}
+                  placeholder="Pilih kota/kabupaten"
                   registration={form.register("city")}
+                  onValueChange={() => {
+                    form.setValue("district", "");
+                    form.setValue("postalCode", "");
+                    setDistricts(initialRegionState);
+                    resetShippingRates();
+                  }}
+                  retry={() => {
+                    if (selectedProvinceId) {
+                      void loadRegions({
+                        level: "city",
+                        parentId: selectedProvinceId,
+                        setState: setCities,
+                      });
+                    }
+                  }}
+                  stateError={cities.error}
                 />
-                <TextField
+                <SelectField
+                  disabled={!selectedCityId}
                   error={form.formState.errors.district?.message}
                   label="Kecamatan"
+                  loading={districts.loading}
+                  options={districts.data}
+                  placeholder="Pilih kecamatan"
                   registration={form.register("district")}
+                  onValueChange={() => {
+                    resetShippingRates();
+                  }}
+                  retry={() => {
+                    if (selectedCityId) {
+                      void loadRegions({
+                        level: "district",
+                        parentId: selectedCityId,
+                        setState: setDistricts,
+                      });
+                    }
+                  }}
+                  stateError={districts.error}
                 />
                 <TextField
                   error={form.formState.errors.postalCode?.message}
@@ -218,31 +447,86 @@ export function CheckoutView() {
                   registration={form.register("postalCode")}
                 />
               </div>
-              <TextField
-                error={form.formState.errors.village?.message}
-                label="Kelurahan/desa"
-                optional
-                registration={form.register("village")}
-              />
               <TextAreaField
                 error={form.formState.errors.address?.message}
                 label="Alamat lengkap"
                 registration={form.register("address")}
               />
-              <TextAreaField
-                error={form.formState.errors.addressNote?.message}
-                label="Patokan/catatan alamat"
-                optional
-                registration={form.register("addressNote")}
-              />
             </FormSection>
 
             <FormSection title="Pilihan kurir">
               <div className="rounded-[var(--radius-lg)] border border-info/20 bg-info-bg p-4 text-sm leading-6 text-info">
-                Integrasi J&T dan JNE akan dipasang pada tahap berikutnya.
-                Layanan pengiriman belum dipilih, sehingga pesanan final belum
-                dapat dibuat dari halaman ini.
+                Cek ongkir menggunakan berat dan stok yang divalidasi ulang dari
+                Supabase. Layanan final dibatasi ke JNE dan J&T.
               </div>
+              <button
+                className={buttonClasses({
+                  className: "w-full sm:w-fit",
+                  variant: "secondary",
+                })}
+                disabled={!canCheckShipping || shippingRates.loading}
+                onClick={handleCheckShipping}
+                type="button"
+              >
+                {shippingRates.loading ? "Menghitung ongkir..." : "Cek ongkir"}
+              </button>
+              {shippingRates.error ? (
+                <div className="rounded-[var(--radius-lg)] bg-danger-bg p-4 text-sm font-medium text-danger">
+                  <p>{shippingRates.error}</p>
+                  <button
+                    className="mt-3 min-h-10 rounded-full border border-danger px-4 text-sm font-semibold"
+                    disabled={!canCheckShipping || shippingRates.loading}
+                    onClick={handleCheckShipping}
+                    type="button"
+                  >
+                    Coba lagi
+                  </button>
+                </div>
+              ) : null}
+              {shippingRates.quotes.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-ink-soft">
+                    Berat tervalidasi {shippingRates.totalWeightGrams} gram
+                    termasuk kemasan {shippingRates.packagingWeightGrams} gram.
+                  </p>
+                  {shippingRates.quotes.map((quote) => (
+                    <label
+                      className={cn(
+                        "block cursor-pointer rounded-[var(--radius-lg)] border p-4 transition-colors",
+                        shippingRates.selectedQuoteId === quote.quoteId
+                          ? "border-ink bg-surface-muted"
+                          : "border-border bg-surface hover:border-border-strong",
+                      )}
+                      key={quote.quoteId}
+                    >
+                      <input
+                        className="sr-only"
+                        name="shippingQuote"
+                        onChange={() =>
+                          setShippingRates((current) => ({
+                            ...current,
+                            selectedQuoteId: quote.quoteId,
+                          }))
+                        }
+                        type="radio"
+                      />
+                      <span className="flex items-start justify-between gap-4">
+                        <span>
+                          <span className="block text-sm font-semibold text-ink">
+                            {quote.courierName} - {quote.serviceName}
+                          </span>
+                          <span className="mt-1 block text-xs font-medium text-ink-muted">
+                            Estimasi {quote.estimatedDelivery}
+                          </span>
+                        </span>
+                        <span className="text-sm font-semibold text-ink">
+                          {formatRupiah(quote.cost)}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
             </FormSection>
 
             <FormSection title="Catatan dan persetujuan">
@@ -282,8 +566,8 @@ export function CheckoutView() {
             Lanjut ke pembayaran QRIS
           </button>
           <p className="text-sm leading-6 text-ink-muted">
-            Tombol pembayaran sengaja dinonaktifkan sampai integrasi ongkir dan
-            pembuatan pesanan final tersedia.
+            Order final, reservasi stok, dan pembayaran QRIS tetap dinonaktifkan
+            sampai tahap berikutnya.
           </p>
         </form>
       </section>
@@ -322,25 +606,41 @@ export function CheckoutView() {
         </div>
         <dl className="mt-5 space-y-3 text-sm">
           <SummaryRow
-            label="Subtotal"
+            label="Subtotal kotor"
             value={formatRupiah(validation?.summary.grossSubtotal ?? 0)}
           />
           <SummaryRow
             label="Diskon produk"
             value={`-${formatRupiah(validation?.summary.discountTotal ?? 0)}`}
           />
-          <SummaryRow label="Ongkos kirim" value="Belum dipilih" />
+          <SummaryRow
+            label="Subtotal bersih"
+            value={formatRupiah(validation?.summary.netSubtotal ?? 0)}
+          />
+          <SummaryRow
+            label="Ongkos kirim"
+            value={selectedQuote ? formatRupiah(selectedQuote.cost) : "Belum dipilih"}
+          />
           <div className="border-t border-border pt-4">
             <SummaryRow
               label="Total sementara"
               strong
-              value={formatRupiah(validation?.summary.netSubtotal ?? 0)}
+              value={formatRupiah(totalTemporary)}
             />
           </div>
         </dl>
+        {!selectedQuote ? (
+          <p className="mt-4 rounded-[var(--radius-md)] bg-warning-bg p-3 text-sm leading-6 text-warning">
+            Pilih layanan pengiriman sebelum tahap order final nanti.
+          </p>
+        ) : null}
       </aside>
     </div>
   );
+
+  function resetShippingRates() {
+    setShippingRates(initialRatesState);
+  }
 }
 
 async function validateCartItems(
@@ -364,6 +664,54 @@ async function validateCartItems(
   }
 
   return (await response.json()) as CartValidationResponse;
+}
+
+async function loadRegions({
+  level,
+  parentId,
+  setState,
+}: {
+  level: "province" | "city" | "district";
+  parentId?: string;
+  setState: (state: RegionState) => void;
+}) {
+  setState({
+    data: [],
+    error: null,
+    loading: true,
+  });
+
+  try {
+    const params = new URLSearchParams({ level });
+
+    if (parentId) {
+      params.set("parentId", parentId);
+    }
+
+    const response = await fetch(`/api/shipping/regions?${params.toString()}`);
+    const body = (await response.json().catch(() => null)) as
+      | { message?: string; regions?: ShippingRegion[] }
+      | null;
+
+    if (!response.ok || !body?.regions) {
+      throw new Error(body?.message ?? "Data wilayah belum dapat dimuat.");
+    }
+
+    setState({
+      data: body.regions,
+      error: null,
+      loading: false,
+    });
+  } catch (error) {
+    setState({
+      data: [],
+      error:
+        error instanceof Error
+          ? error.message
+          : "Data wilayah belum dapat dimuat.",
+      loading: false,
+    });
+  }
 }
 
 function FormSection({
@@ -408,6 +756,74 @@ function TextField({
         type={type}
         {...registration}
       />
+      {error ? (
+        <span className="mt-2 block text-sm font-medium text-danger">
+          {error}
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
+function SelectField({
+  disabled = false,
+  error,
+  label,
+  loading,
+  options,
+  placeholder,
+  registration,
+  onValueChange,
+  retry,
+  stateError,
+}: {
+  disabled?: boolean;
+  error?: string;
+  label: string;
+  loading: boolean;
+  options: ShippingRegion[];
+  placeholder: string;
+  registration: UseFormRegisterReturn;
+  onValueChange?: (event: ChangeEvent<HTMLSelectElement>) => void;
+  retry: () => void | undefined;
+  stateError: string | null;
+}) {
+  const isEmpty = !loading && !stateError && options.length === 0;
+
+  return (
+    <label className="block text-sm font-semibold text-ink">
+      {label}
+      <select
+        className={fieldClass}
+        disabled={disabled || loading}
+        {...registration}
+        onChange={(event) => {
+          registration.onChange(event);
+          onValueChange?.(event);
+        }}
+      >
+        <option value="">
+          {loading ? "Memuat..." : placeholder}
+        </option>
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.name}
+          </option>
+        ))}
+      </select>
+      {stateError ? (
+        <span className="mt-2 block text-sm font-medium text-danger">
+          {stateError}{" "}
+          <button className="underline" onClick={retry} type="button">
+            Coba lagi
+          </button>
+        </span>
+      ) : null}
+      {isEmpty && !disabled ? (
+        <span className="mt-2 block text-sm font-medium text-ink-muted">
+          Data belum tersedia.
+        </span>
+      ) : null}
       {error ? (
         <span className="mt-2 block text-sm font-medium text-danger">
           {error}

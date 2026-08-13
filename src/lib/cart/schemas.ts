@@ -27,16 +27,14 @@ export const checkoutFormSchema = z.object({
       return /^(\+62|62|0)8[1-9][0-9]{7,11}$/.test(normalized);
     }, "Gunakan nomor WhatsApp Indonesia yang valid."),
   email: z.string().trim().email("Email wajib valid."),
-  province: z.string().trim().min(2, "Provinsi wajib diisi."),
-  city: z.string().trim().min(2, "Kota atau kabupaten wajib diisi."),
-  district: z.string().trim().min(2, "Kecamatan wajib diisi."),
+  province: z.string().trim().min(1, "Provinsi wajib diisi."),
+  city: z.string().trim().min(1, "Kota atau kabupaten wajib diisi."),
+  district: z.string().trim().min(1, "Kecamatan wajib diisi."),
   postalCode: z
     .string()
     .trim()
     .regex(/^[0-9]{5}$/, "Kode pos harus 5 digit."),
   address: z.string().trim().min(10, "Alamat lengkap terlalu singkat."),
-  village: optionalText,
-  addressNote: optionalText,
   orderNote: optionalText,
   termsAccepted: z
     .boolean()

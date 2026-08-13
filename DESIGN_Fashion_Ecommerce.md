@@ -588,6 +588,8 @@ Checkout harus lebih utilitarian dan minim distraksi daripada homepage.
 
 Email adalah field wajib. Gunakan label **Email** tanpa kata “opsional”, input type `email`, validasi inline, dan helper text bahwa bukti transaksi akan dikirim melalui email.
 
+Section alamat pengiriman hanya menampilkan provinsi, kota/kabupaten, kecamatan, kode pos, dan **Alamat lengkap**. Jangan menampilkan field kelurahan/desa atau patokan/catatan alamat terpisah; detail tersebut dimasukkan pelanggan di alamat lengkap bila diperlukan.
+
 #### Shipping options
 
 Gunakan selectable cards yang menampilkan:

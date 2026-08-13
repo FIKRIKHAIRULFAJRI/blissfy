@@ -224,8 +224,6 @@ Pelanggan tidak perlu membuat akun. Data berikut wajib dikumpulkan:
 
 Data berikut bersifat opsional:
 
-- Kelurahan/desa apabila tidak diwajibkan API.
-- Patokan atau catatan alamat.
 - Catatan pesanan.
 
 | ID | Kebutuhan | Prioritas |
