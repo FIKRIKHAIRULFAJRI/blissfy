@@ -7,6 +7,10 @@
     "dev:store": "pnpm --filter @blissfy/store dev",
     "build:store": "pnpm --filter @blissfy/store build",
     "lint:store": "pnpm --filter @blissfy/store lint",
-    "test:store": "pnpm --filter @blissfy/store test"
+    "test:store": "pnpm --filter @blissfy/store test",
+
+    "dev:admin": "pnpm --filter @blissfy/admin dev",
+    "build:admin": "pnpm --filter @blissfy/admin build",
+    "lint:admin": "pnpm --filter @blissfy/admin lint"
   }
 }
