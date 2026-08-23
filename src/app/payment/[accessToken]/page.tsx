@@ -2,14 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { PaymentClient } from "@/components/store/PaymentClient";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { formatRupiah } from "@/lib/pricing";
 import { getPaymentOrderByAccessToken } from "@/lib/orders/read";
+import { getPublicPaymentStateByToken } from "@/lib/payments/service";
 
 export const metadata: Metadata = {
-  title: "Persiapan pembayaran | Blissfy.co",
+  title: "Pembayaran QRIS | Blissfy.co",
   description:
-    "Ringkasan pesanan dan persiapan pembayaran Blissfy.co sebelum QRIS Midtrans diaktifkan.",
+    "Selesaikan pembayaran QRIS Midtrans untuk pesanan Blissfy.co.",
   robots: {
     index: false,
     follow: false,
@@ -22,9 +24,12 @@ export default async function PaymentPage({
   params: Promise<{ accessToken: string }>;
 }) {
   const { accessToken } = await params;
-  const order = await getPaymentOrderByAccessToken(accessToken);
+  const [order, payment] = await Promise.all([
+    getPaymentOrderByAccessToken(accessToken),
+    getPublicPaymentStateByToken(accessToken),
+  ]);
 
-  if (!order) {
+  if (!order || !payment) {
     notFound();
   }
 
@@ -45,7 +50,9 @@ export default async function PaymentPage({
           >
             Blissfy.co
           </Link>
-          <Badge tone="warning">WAITING_PAYMENT</Badge>
+          <Badge tone={payment.paymentStatus === "PAID" ? "success" : "warning"}>
+            {payment.paymentStatus}
+          </Badge>
         </div>
       </header>
       <main className="container-page py-10 md:py-14" id="main-content">
@@ -59,8 +66,8 @@ export default async function PaymentPage({
                 {order.orderNumber}
               </h1>
               <p className="mt-3 text-sm leading-6 text-ink-soft">
-                Stok ditahan sampai {expiresAt} WIB. Pembayaran QRIS Midtrans
-                akan diaktifkan pada tahap berikutnya.
+                Stok ditahan sampai {expiresAt} WIB. Gunakan QRIS dinamis
+                Midtrans pada halaman ini untuk menyelesaikan pembayaran.
               </p>
             </div>
             <div className="rounded-[var(--radius-lg)] bg-warning-bg p-4 text-sm font-semibold text-warning">
@@ -68,9 +75,11 @@ export default async function PaymentPage({
             </div>
           </div>
 
-          <div className="mt-6 rounded-[var(--radius-lg)] bg-info-bg p-4 text-sm leading-6 text-info">
-            Jangan melakukan transfer manual. Tahap ini hanya membuat order,
-            snapshot transaksi, dan reservasi stok selama 10 menit.
+          <div className="mt-6">
+            <PaymentClient
+              accessToken={accessToken}
+              initialPayment={payment}
+            />
           </div>
 
           <div className="mt-8 grid gap-8 md:grid-cols-[1fr_260px]">

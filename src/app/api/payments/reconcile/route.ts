@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getInternalCronSecret } from "@/lib/midtrans/config";
+import { reconcilePendingMidtransPayments } from "@/lib/payments/midtrans";
 
 export async function POST(request: Request) {
   const configuredSecret = getInternalCronSecret();
@@ -27,25 +27,22 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await db.query<{ releasedCount: number }>(
-      `
-        SELECT public.release_expired_stock_reservations() AS "releasedCount"
-      `,
-    );
+    const results = await reconcilePendingMidtransPayments();
 
     return NextResponse.json({
       ok: true,
-      releasedCount: result.rows[0]?.releasedCount ?? 0,
+      checked: results.length,
+      results,
     });
   } catch (error) {
-    console.error("Release expired stock reservations failed", {
+    console.error("Midtrans reconciliation failed", {
       name: error instanceof Error ? error.name : "UnknownError",
     });
 
     return NextResponse.json(
       {
         ok: false,
-        message: "Reservasi kedaluwarsa belum dapat direkonsiliasi.",
+        message: "Rekonsiliasi pembayaran belum dapat dijalankan.",
       },
       { status: 503 },
     );
