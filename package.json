@@ -2,37 +2,11 @@
   "name": "blissfy",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.22.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "admin:hash-password": "node scripts/hash-admin-password.mjs",
-    "start": "next start",
-    "lint": "eslint",
-    "test": "tsx --test src/lib/cart/cart-contract.test.ts src/lib/orders/order-contract.test.ts src/lib/payments/payment-contract.test.ts",
-    "test:cart": "tsx --test src/lib/cart/cart-contract.test.ts",
-    "test:orders": "tsx --test src/lib/orders/order-contract.test.ts",
-    "test:payments": "tsx --test src/lib/payments/payment-contract.test.ts"
-  },
-  "dependencies": {
-    "@hookform/resolvers": "^5.7.1",
-    "next": "16.3.0",
-    "pg": "^8.23.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "react-hook-form": "^7.85.0",
-    "zod": "^4.4.3",
-    "zustand": "^5.0.15"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/pg": "^8.21.0",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.0",
-    "tailwindcss": "^4",
-    "tsx": "^4.23.12",
-    "typescript": "^5"
+    "dev:store": "pnpm --filter @blissfy/store dev",
+    "build:store": "pnpm --filter @blissfy/store build",
+    "lint:store": "pnpm --filter @blissfy/store lint",
+    "test:store": "pnpm --filter @blissfy/store test"
   }
 }
