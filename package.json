@@ -11,6 +11,11 @@
 
     "dev:admin": "pnpm --filter @blissfy/admin dev",
     "build:admin": "pnpm --filter @blissfy/admin build",
-    "lint:admin": "pnpm --filter @blissfy/admin lint"
+    "lint:admin": "pnpm --filter @blissfy/admin lint",
+
+    "dev:api": "pnpm --filter @blissfy/api start:dev",
+    "build:api": "pnpm --filter @blissfy/api build",
+    "lint:api": "pnpm --filter @blissfy/api lint",
+    "test:api": "pnpm --filter @blissfy/api test"
   }
 }
