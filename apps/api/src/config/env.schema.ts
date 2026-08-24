@@ -10,6 +10,8 @@ export const envSchema = z.object({
   STORE_URL: z.string().url().default('http://localhost:3000'),
 
   ADMIN_URL: z.string().url().default('http://localhost:3001'),
+
+  DATABASE_URL: z.string().min(1),
 });
 
 export type Env = z.infer<typeof envSchema>;
