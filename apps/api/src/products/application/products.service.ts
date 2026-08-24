@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { InventoryService } from '../../inventory/application/inventory.service';
+
 import {
   getPriceSnapshot,
   type DiscountForPricing,
 } from '../domain/product-pricing';
+
 import type { CatalogProduct, ProductDetail } from '../domain/product.types';
+
 import {
   ProductsRepository,
   type DiscountRow,
@@ -16,11 +20,15 @@ type ProductRelations = {
   imagesByProduct: Map<string, ImageRow[]>;
   variantsByProduct: Map<string, VariantRow[]>;
   discountsByProduct: Map<string, DiscountRow[]>;
+  availableStockByVariant: Map<string, number>;
 };
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly productsRepository: ProductsRepository) {}
+  constructor(
+    private readonly productsRepository: ProductsRepository,
+    private readonly inventoryService: InventoryService,
+  ) {}
 
   async getCatalogProducts(limit?: number): Promise<CatalogProduct[]> {
     const products = await this.productsRepository.findActiveProducts(limit);
@@ -59,10 +67,21 @@ export class ProductsService {
       this.productsRepository.findDiscounts(productIds),
     ]);
 
+    const availability = await this.inventoryService.getVariantAvailability(
+      variants.map((variant) => variant.id),
+    );
+
     return {
       imagesByProduct: this.groupByProductId(images),
       variantsByProduct: this.groupByProductId(variants),
       discountsByProduct: this.groupByProductId(discounts),
+
+      availableStockByVariant: new Map(
+        Array.from(availability, ([variantId, stock]) => [
+          variantId,
+          stock.available,
+        ]),
+      ),
     };
   }
 
@@ -73,6 +92,7 @@ export class ProductsService {
 
     for (const row of rows) {
       const current = map.get(row.productId) ?? [];
+
       current.push(row);
       map.set(row.productId, current);
     }
@@ -103,7 +123,9 @@ export class ProductsService {
         colorHex: variant.colorHex,
         size: variant.size,
         weightGram: variant.weightGram,
-        stock: variant.stock,
+
+        stock: relations.availableStockByVariant.get(variant.id) ?? 0,
+
         isActive: variant.isActive,
       })),
     };
@@ -127,7 +149,8 @@ export class ProductsService {
     const image = images[0];
 
     const totalStock = variants.reduce(
-      (sum, variant) => sum + variant.stock,
+      (sum, variant) =>
+        sum + (relations.availableStockByVariant.get(variant.id) ?? 0),
       0,
     );
 
@@ -154,9 +177,10 @@ export class ProductsService {
     };
   }
 
-  private uniqueColors(
-    variants: VariantRow[],
-  ): Array<{ name: string; value: string | null }> {
+  private uniqueColors(variants: VariantRow[]): Array<{
+    name: string;
+    value: string | null;
+  }> {
     const colors = new Map<string, string | null>();
 
     for (const variant of variants) {
@@ -165,6 +189,9 @@ export class ProductsService {
       }
     }
 
-    return Array.from(colors, ([name, value]) => ({ name, value })).slice(0, 4);
+    return Array.from(colors, ([name, value]) => ({
+      name,
+      value,
+    })).slice(0, 4);
   }
 }
