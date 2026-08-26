@@ -376,7 +376,7 @@ export function CheckoutView() {
 
     try {
       const response = await fetch(
-        "/api/shipping/rates",
+        getPublicApiUrl("/v1/shipping/rates"),
         {
           body: JSON.stringify({
             destinationDistrictId:
@@ -1174,7 +1174,9 @@ async function loadRegions({
     }
 
     const response = await fetch(
-      `/api/shipping/regions?${params.toString()}`,
+      getPublicApiUrl(
+        `/v1/shipping/regions?${params.toString()}`,
+      ),
     );
 
     const body = (await response
