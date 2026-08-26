@@ -12,6 +12,15 @@ export const envSchema = z.object({
   ADMIN_URL: z.string().url().default('http://localhost:3001'),
 
   DATABASE_URL: z.string().min(1),
+
+  RAJAONGKIR_BASE_URL: z
+    .string()
+    .url()
+    .default('https://rajaongkir.komerce.id/api/v1'),
+
+  RAJAONGKIR_API_KEY: z.string().trim().min(1).optional(),
+
+  SHIPPING_ORIGIN_DISTRICT_ID: z.string().trim().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
