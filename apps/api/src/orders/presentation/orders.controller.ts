@@ -8,16 +8,21 @@ import {
   Post,
 } from '@nestjs/common';
 
+import { ConfigService } from '@nestjs/config';
+
 import {
   ApiBadRequestResponse,
   ApiBody,
   ApiConflictResponse,
+  ApiHeader,
   ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
+import { OrderMaintenanceService } from '../application/order-maintenance.service';
 import { OrdersService } from '../application/orders.service';
 
 const rateLimitWindowMs = 60_000;
@@ -34,7 +39,11 @@ const orderRateLimit = new Map<
 @ApiTags('Orders')
 @Controller('v1/orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly orderMaintenanceService: OrderMaintenanceService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)
@@ -239,6 +248,59 @@ export class OrdersController {
     }
 
     return this.ordersService.create(body);
+  }
+
+  @Post('release-expired')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Release expired stock reservations',
+  })
+  @ApiHeader({
+    name: 'x-cron-secret',
+    required: true,
+    description: 'Internal secret for scheduled maintenance.',
+  })
+  @ApiOkResponse({
+    description: 'Expired stock reservations released successfully.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid cron secret.',
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Cron configuration or reservation maintenance unavailable.',
+  })
+  releaseExpired(
+    @Headers('x-cron-secret')
+    cronSecret?: string,
+  ) {
+    const configuredSecret = this.configService.get<string>('CRON_SECRET');
+
+    if (!configuredSecret) {
+      throw new HttpException(
+        {
+          ok: false,
+          code: 'CRON_NOT_CONFIGURED',
+          message: 'Secret maintenance belum dikonfigurasi.',
+        },
+
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    if (!cronSecret || cronSecret !== configuredSecret) {
+      throw new HttpException(
+        {
+          ok: false,
+          code: 'CRON_UNAUTHORIZED',
+          message: 'Tidak diizinkan.',
+        },
+
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    return this.orderMaintenanceService.releaseExpiredReservations();
   }
 }
 

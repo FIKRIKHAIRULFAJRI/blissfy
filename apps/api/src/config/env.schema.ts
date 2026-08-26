@@ -21,6 +21,8 @@ export const envSchema = z.object({
   RAJAONGKIR_API_KEY: z.string().trim().min(1).optional(),
 
   SHIPPING_ORIGIN_DISTRICT_ID: z.string().trim().min(1).optional(),
+
+  CRON_SECRET: z.string().trim().min(16).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
