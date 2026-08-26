@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { CheckoutModule } from './checkout/checkout.module';
 import { validateEnv } from './config/env.schema';
-import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './database/database.module';
+import { HealthModule } from './health/health.module';
 import { ProductsModule } from './products/products.module';
 
 @Module({
@@ -11,9 +12,10 @@ import { ProductsModule } from './products/products.module';
       isGlobal: true,
       validate: validateEnv,
     }),
-    HealthModule,
     DatabaseModule,
+    HealthModule,
     ProductsModule,
+    CheckoutModule,
   ],
 })
 export class AppModule {}
