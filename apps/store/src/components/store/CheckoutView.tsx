@@ -289,43 +289,46 @@ export function CheckoutView() {
       const idempotencyKey =
         getOrCreateCheckoutIdempotencyKey();
 
-      const response = await fetch("/api/orders", {
-        body: JSON.stringify({
-          idempotencyKey,
-          items: buildCartValidationPayload(items).items.map(
-            (item) => ({
-              productId: item.productId,
-              variantId: item.variantId,
-              quantity: item.quantity,
-            }),
-          ),
-          recipient: {
-            recipientName: values.recipientName,
-            whatsapp: values.whatsapp,
-            email: values.email,
-            province: values.province,
-            city: values.city,
-            district: values.district,
-            postalCode: values.postalCode,
-            address: values.address,
+      const response = await fetch(
+        getPublicApiUrl("/v1/orders"),
+        {
+          body: JSON.stringify({
+            idempotencyKey,
+            items: buildCartValidationPayload(items).items.map(
+              (item) => ({
+                productId: item.productId,
+                variantId: item.variantId,
+                quantity: item.quantity,
+              }),
+            ),
+            recipient: {
+              recipientName: values.recipientName,
+              whatsapp: values.whatsapp,
+              email: values.email,
+              province: values.province,
+              city: values.city,
+              district: values.district,
+              postalCode: values.postalCode,
+              address: values.address,
+            },
+            orderNote: values.orderNote,
+            shippingQuoteId: selectedQuote.quoteId,
+            destination: {
+              provinceId: selectedProvince.id,
+              provinceName: selectedProvince.name,
+              cityId: selectedCity.id,
+              cityName: selectedCity.name,
+              districtId: selectedDistrict.id,
+              districtName: selectedDistrict.name,
+            },
+            termsAccepted: values.termsAccepted,
+          }),
+          headers: {
+            "content-type": "application/json",
           },
-          orderNote: values.orderNote,
-          shippingQuoteId: selectedQuote.quoteId,
-          destination: {
-            provinceId: selectedProvince.id,
-            provinceName: selectedProvince.name,
-            cityId: selectedCity.id,
-            cityName: selectedCity.name,
-            districtId: selectedDistrict.id,
-            districtName: selectedDistrict.name,
-          },
-          termsAccepted: values.termsAccepted,
-        }),
-        headers: {
-          "content-type": "application/json",
+          method: "POST",
         },
-        method: "POST",
-      });
+      );
 
       const body = (await response.json().catch(() => null)) as
         | {
