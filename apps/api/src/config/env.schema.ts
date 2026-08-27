@@ -34,6 +34,10 @@ export const envSchema = z.object({
 
   DOKU_PRIVATE_KEY_PATH: z.string().trim().min(1).optional(),
 
+  DOKU_MERCHANT_ID: z.string().trim().min(1).optional(),
+
+  DOKU_TERMINAL_ID: z.string().trim().min(1).max(16).optional(),
+
   DOKU_IS_PRODUCTION: z.enum(['true', 'false']).default('false'),
 });
 

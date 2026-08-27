@@ -8,6 +8,8 @@ import {
   type PaymentStatus,
 } from '../domain/payment-gateway';
 
+import { PaymentSettlementRepository } from '../infrastructure/payment-settlement.repository';
+
 import {
   PaymentsRepository,
   type PaymentAccessRow,
@@ -43,6 +45,8 @@ export type PublicPaymentState = {
 export class PaymentsService {
   constructor(
     private readonly paymentsRepository: PaymentsRepository,
+
+    private readonly paymentSettlementRepository: PaymentSettlementRepository,
 
     @Inject(PAYMENT_GATEWAY)
     private readonly paymentGateway: PaymentGateway,
@@ -149,6 +153,12 @@ export class PaymentsService {
   ): Promise<PublicPaymentState> {
     let paymentRow = await this.findPaymentByAccessToken(accessToken);
 
+    if (shouldSynchronizeGateway(paymentRow)) {
+      await this.synchronizeGatewayStatus(paymentRow);
+
+      paymentRow = await this.findPaymentByAccessToken(accessToken);
+    }
+
     if (
       paymentRow.orderPaymentStatus === 'PENDING' &&
       paymentRow.paymentStatus === 'PENDING' &&
@@ -163,6 +173,36 @@ export class PaymentsService {
     }
 
     return toPublicPaymentState(paymentRow);
+  }
+
+  private async synchronizeGatewayStatus(
+    paymentRow: PaymentAccessRow,
+  ): Promise<void> {
+    if (!paymentRow.providerOrderId) {
+      return;
+    }
+
+    try {
+      const gatewayStatus = await this.paymentGateway.getPaymentStatus({
+        providerOrderId: paymentRow.providerOrderId,
+
+        providerTransactionId: paymentRow.gatewayTransactionId,
+      });
+
+      await this.paymentSettlementRepository.applyGatewayStatus(
+        paymentRow.orderId,
+        paymentRow.paymentId,
+        gatewayStatus,
+      );
+    } catch (error) {
+      console.error('Payment status synchronization failed', {
+        orderNumber: paymentRow.orderNumber,
+
+        provider: paymentRow.provider,
+
+        name: error instanceof Error ? error.name : 'UnknownError',
+      });
+    }
   }
 
   private async findPaymentByAccessToken(accessToken: string) {
@@ -183,6 +223,14 @@ export class PaymentsService {
 
     return paymentRow;
   }
+}
+
+function shouldSynchronizeGateway(paymentRow: PaymentAccessRow) {
+  return (
+    paymentRow.orderPaymentStatus === 'PENDING' &&
+    paymentRow.paymentStatus === 'PENDING' &&
+    Boolean(paymentRow.providerOrderId)
+  );
 }
 
 function isExpired(paymentRow: PaymentAccessRow) {
@@ -231,6 +279,7 @@ function toPublicPaymentState(
 
 export class PaymentServiceError extends Error {
   code: string;
+
   status: number;
 
   constructor(code: string, message: string, status: number) {
@@ -239,6 +288,7 @@ export class PaymentServiceError extends Error {
     this.name = 'PaymentServiceError';
 
     this.code = code;
+
     this.status = status;
   }
 }

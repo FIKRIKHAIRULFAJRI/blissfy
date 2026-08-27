@@ -1,234 +1,39 @@
 import { hashSecret } from '../../orders/domain/hash';
 
-import type { QrisPaymentResult } from '../domain/payment-gateway';
-
 import type {
-  PaymentAccessRow,
-  PaymentsRepository,
-} from '../infrastructure/payments.repository';
+  PaymentStatusResult,
+  QrisPaymentResult,
+} from '../domain/payment-gateway';
 
-import { PaymentServiceError, PaymentsService } from './payments.service';
+import { PaymentsService, PaymentServiceError } from './payments.service';
 
-describe('PaymentsService', () => {
-  const paymentsRepositoryMock = {
-    findByAccessTokenHash: jest.fn(),
+const futureDate = new Date(Date.now() + 10 * 60 * 1000);
 
-    updateFromQris: jest.fn(),
+const paidDate = new Date('2026-08-27T15:00:00.000Z');
 
-    expirePaymentAndReleaseReservations: jest.fn(),
-  };
-
-  const paymentGatewayMock = {
-    createQrisPayment: jest.fn(),
-
-    getPaymentStatus: jest.fn(),
-  };
-
-  let service: PaymentsService;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-
-    service = new PaymentsService(
-      paymentsRepositoryMock as unknown as PaymentsRepository,
-
-      paymentGatewayMock,
-    );
-  });
-
-  it('should reject an unknown payment access token', async () => {
-    paymentsRepositoryMock.findByAccessTokenHash.mockResolvedValue(null);
-
-    try {
-      await service.getPublicPaymentStateByToken('invalid-payment-token');
-
-      throw new Error('Expected payment lookup to fail');
-    } catch (error) {
-      expect(error).toBeInstanceOf(PaymentServiceError);
-
-      const paymentError = error as PaymentServiceError;
-
-      expect(paymentError.code).toBe('ORDER_NOT_FOUND');
-
-      expect(paymentError.status).toBe(404);
-    }
-
-    expect(paymentsRepositoryMock.findByAccessTokenHash).toHaveBeenCalledWith(
-      hashSecret('invalid-payment-token'),
-    );
-
-    expect(paymentGatewayMock.createQrisPayment).not.toHaveBeenCalled();
-  });
-
-  it('should return existing QRIS without creating another gateway payment', async () => {
-    const paymentRow = createPaymentRow({
-      provider: 'mock',
-
-      providerOrderId: 'BLS-20260827-ABC12345',
-
-      gatewayTransactionId: 'mock-BLS-20260827-ABC12345',
-
-      qrImageUrl: 'data:image/svg+xml;base64,existing',
-
-      qrString: 'MOCK-QRIS:BLS-20260827-ABC12345:195000',
-    });
-
-    paymentsRepositoryMock.findByAccessTokenHash.mockResolvedValue(paymentRow);
-
-    const result = await service.createOrGetQrisPayment('payment-token-123');
-
-    expect(result).toMatchObject({
-      orderNumber: 'BLS-20260827-ABC12345',
-
-      paymentStatus: 'PENDING',
-
-      provider: 'mock',
-
-      providerOrderId: 'BLS-20260827-ABC12345',
-
-      qrString: 'MOCK-QRIS:BLS-20260827-ABC12345:195000',
-    });
-
-    expect(paymentGatewayMock.createQrisPayment).not.toHaveBeenCalled();
-
-    expect(paymentsRepositoryMock.updateFromQris).not.toHaveBeenCalled();
-  });
-
-  it('should create QRIS through the payment gateway and persist the result', async () => {
-    const paymentRow = createPaymentRow();
-
-    const gatewayResult: QrisPaymentResult = {
-      provider: 'mock',
-
-      providerOrderId: paymentRow.orderNumber,
-
-      providerTransactionId: `mock-${paymentRow.orderNumber}`,
-
-      status: 'PENDING',
-
-      amount: paymentRow.amount,
-
-      qrImageUrl: 'data:image/svg+xml;base64,new',
-
-      qrString: `MOCK-QRIS:${paymentRow.orderNumber}:${paymentRow.amount}`,
-
-      expiresAt: paymentRow.paymentExpiresAt.toISOString(),
-
-      rawResponse: {
-        simulated: true,
-      },
-    };
-
-    paymentsRepositoryMock.findByAccessTokenHash.mockResolvedValue(paymentRow);
-
-    paymentGatewayMock.createQrisPayment.mockResolvedValue(gatewayResult);
-
-    const result = await service.createOrGetQrisPayment('payment-token-123');
-
-    expect(paymentGatewayMock.createQrisPayment).toHaveBeenCalledWith({
-      orderNumber: paymentRow.orderNumber,
-
-      amount: paymentRow.amount,
-
-      expiresAt: paymentRow.paymentExpiresAt,
-
-      customer: {
-        name: paymentRow.recipientName,
-
-        email: paymentRow.email,
-
-        phone: paymentRow.whatsapp,
-      },
-    });
-
-    expect(paymentsRepositoryMock.updateFromQris).toHaveBeenCalledWith(
-      paymentRow.paymentId,
-      gatewayResult,
-    );
-
-    expect(result).toMatchObject({
-      paymentStatus: 'PENDING',
-
-      provider: 'mock',
-
-      qrString: gatewayResult.qrString,
-
-      isPaymentGatewayConfigured: true,
-    });
-  });
-
-  it('should expire payment and release reservations when checkout is expired', async () => {
-    const expiredPayment = createPaymentRow({
-      orderExpiresAt: new Date(Date.now() - 60_000),
-
-      paymentExpiresAt: new Date(Date.now() - 60_000),
-    });
-
-    const refreshedPayment = createPaymentRow({
-      orderPaymentStatus: 'EXPIRED',
-
-      paymentStatus: 'EXPIRED',
-
-      fulfillmentStatus: 'CANCELLED',
-
-      orderExpiresAt: expiredPayment.orderExpiresAt,
-
-      paymentExpiresAt: expiredPayment.paymentExpiresAt,
-    });
-
-    paymentsRepositoryMock.findByAccessTokenHash
-      .mockResolvedValueOnce(expiredPayment)
-      .mockResolvedValueOnce(refreshedPayment);
-
-    paymentsRepositoryMock.expirePaymentAndReleaseReservations.mockResolvedValue(
-      true,
-    );
-
-    const result = await service.createOrGetQrisPayment(
-      'payment-token-expired',
-    );
-
-    expect(
-      paymentsRepositoryMock.expirePaymentAndReleaseReservations,
-    ).toHaveBeenCalledWith(expiredPayment.orderId, expiredPayment.paymentId);
-
-    expect(result).toMatchObject({
-      paymentStatus: 'EXPIRED',
-
-      fulfillmentStatus: 'CANCELLED',
-    });
-
-    expect(paymentGatewayMock.createQrisPayment).not.toHaveBeenCalled();
-
-    expect(paymentsRepositoryMock.updateFromQris).not.toHaveBeenCalled();
-  });
-});
-
-function createPaymentRow(
-  overrides: Partial<PaymentAccessRow> = {},
-): PaymentAccessRow {
+function createPaymentRow(overrides: Record<string, unknown> = {}) {
   return {
-    orderId: 'order-id-1',
+    orderId: 'order-1',
 
-    orderNumber: 'BLS-20260827-ABC12345',
+    orderNumber: 'BLS-TEST-001',
 
-    accessTokenHash: hashSecret('payment-token-123'),
+    accessTokenHash: hashSecret('token-test'),
 
     orderPaymentStatus: 'PENDING',
 
-    fulfillmentStatus: 'UNFULFILLED',
+    fulfillmentStatus: 'WAITING_PAYMENT',
 
-    totalPayment: 195000,
+    totalPayment: 169650,
 
-    orderExpiresAt: new Date(Date.now() + 10 * 60_000),
+    orderExpiresAt: futureDate,
 
-    recipientName: 'Fikri Khairul',
+    recipientName: 'Fikri',
 
     email: 'fikri@example.com',
 
     whatsapp: '081234567890',
 
-    paymentId: 'payment-id-1',
+    paymentId: 'payment-1',
 
     provider: null,
 
@@ -238,7 +43,7 @@ function createPaymentRow(
 
     paymentStatus: 'PENDING',
 
-    amount: 195000,
+    amount: 169650,
 
     qrImageUrl: null,
 
@@ -246,8 +51,307 @@ function createPaymentRow(
 
     paidAt: null,
 
-    paymentExpiresAt: new Date(Date.now() + 10 * 60_000),
+    paymentExpiresAt: futureDate,
 
     ...overrides,
   };
 }
+
+describe('PaymentsService', () => {
+  let paymentsRepositoryMock: {
+    findByAccessTokenHash: jest.Mock;
+
+    updateFromQris: jest.Mock;
+
+    expirePaymentAndReleaseReservations: jest.Mock;
+  };
+
+  let paymentSettlementRepositoryMock: {
+    applyGatewayStatus: jest.Mock;
+  };
+
+  let paymentGatewayMock: {
+    createQrisPayment: jest.Mock;
+
+    getPaymentStatus: jest.Mock;
+  };
+
+  let service: PaymentsService;
+
+  beforeEach(() => {
+    paymentsRepositoryMock = {
+      findByAccessTokenHash: jest.fn(),
+
+      updateFromQris: jest.fn(),
+
+      expirePaymentAndReleaseReservations: jest.fn(),
+    };
+
+    paymentSettlementRepositoryMock = {
+      applyGatewayStatus: jest.fn(),
+    };
+
+    paymentGatewayMock = {
+      createQrisPayment: jest.fn(),
+
+      getPaymentStatus: jest.fn(),
+    };
+
+    service = new PaymentsService(
+      paymentsRepositoryMock as never,
+
+      paymentSettlementRepositoryMock as never,
+
+      paymentGatewayMock,
+    );
+  });
+
+  it('throws ORDER_NOT_FOUND for an unknown access token', async () => {
+    paymentsRepositoryMock.findByAccessTokenHash.mockResolvedValue(null);
+
+    await expect(
+      service.getPublicPaymentStateByToken('unknown-token'),
+    ).rejects.toMatchObject({
+      code: 'ORDER_NOT_FOUND',
+
+      status: 404,
+    } satisfies Partial<PaymentServiceError>);
+
+    expect(paymentsRepositoryMock.findByAccessTokenHash).toHaveBeenCalledWith(
+      hashSecret('unknown-token'),
+    );
+  });
+
+  it('returns an existing QR without creating another gateway payment', async () => {
+    const row = createPaymentRow({
+      provider: 'mock',
+
+      providerOrderId: 'BLS-TEST-001',
+
+      gatewayTransactionId: 'mock-BLS-TEST-001',
+
+      qrString: 'existing-qr',
+    });
+
+    paymentsRepositoryMock.findByAccessTokenHash.mockResolvedValue(row);
+
+    const result = await service.createOrGetQrisPayment('token-test');
+
+    expect(paymentGatewayMock.createQrisPayment).not.toHaveBeenCalled();
+
+    expect(paymentsRepositoryMock.updateFromQris).not.toHaveBeenCalled();
+
+    expect(result.qrString).toBe('existing-qr');
+  });
+
+  it('creates and persists a QRIS payment', async () => {
+    const row = createPaymentRow();
+
+    const gatewayResult: QrisPaymentResult = {
+      provider: 'mock',
+
+      providerOrderId: 'BLS-TEST-001',
+
+      providerTransactionId: 'mock-BLS-TEST-001',
+
+      status: 'PENDING',
+
+      amount: 169650,
+
+      qrImageUrl: 'data:image/svg+xml;base64,test',
+
+      qrString: 'MOCK-QRIS',
+
+      expiresAt: futureDate.toISOString(),
+
+      rawResponse: {
+        simulated: true,
+      },
+    };
+
+    paymentsRepositoryMock.findByAccessTokenHash.mockResolvedValue(row);
+
+    paymentGatewayMock.createQrisPayment.mockResolvedValue(gatewayResult);
+
+    const result = await service.createOrGetQrisPayment('token-test');
+
+    expect(paymentGatewayMock.createQrisPayment).toHaveBeenCalledWith({
+      orderNumber: 'BLS-TEST-001',
+
+      amount: 169650,
+
+      expiresAt: futureDate,
+
+      customer: {
+        name: 'Fikri',
+
+        email: 'fikri@example.com',
+
+        phone: '081234567890',
+      },
+    });
+
+    expect(paymentsRepositoryMock.updateFromQris).toHaveBeenCalledWith(
+      'payment-1',
+      gatewayResult,
+    );
+
+    expect(result.provider).toBe('mock');
+
+    expect(result.qrString).toBe('MOCK-QRIS');
+  });
+
+  it('expires an unpaid order before creating QRIS when reservation has expired', async () => {
+    const expiredDate = new Date(Date.now() - 60_000);
+
+    const expiredRow = createPaymentRow({
+      orderExpiresAt: expiredDate,
+
+      paymentExpiresAt: expiredDate,
+    });
+
+    const reloadedRow = createPaymentRow({
+      orderPaymentStatus: 'EXPIRED',
+
+      paymentStatus: 'EXPIRED',
+
+      fulfillmentStatus: 'CANCELLED',
+
+      orderExpiresAt: expiredDate,
+
+      paymentExpiresAt: expiredDate,
+    });
+
+    paymentsRepositoryMock.findByAccessTokenHash
+      .mockResolvedValueOnce(expiredRow)
+      .mockResolvedValueOnce(reloadedRow);
+
+    await service.createOrGetQrisPayment('token-test');
+
+    expect(
+      paymentsRepositoryMock.expirePaymentAndReleaseReservations,
+    ).toHaveBeenCalledWith('order-1', 'payment-1');
+
+    expect(paymentGatewayMock.createQrisPayment).not.toHaveBeenCalled();
+  });
+
+  it('synchronizes a pending payment with the gateway and reloads the settled state', async () => {
+    const pendingRow = createPaymentRow({
+      provider: 'mock',
+
+      providerOrderId: 'BLS-TEST-001',
+
+      gatewayTransactionId: 'mock-BLS-TEST-001',
+
+      qrString: 'MOCK-QRIS',
+    });
+
+    const settledRow = createPaymentRow({
+      provider: 'mock',
+
+      providerOrderId: 'BLS-TEST-001',
+
+      gatewayTransactionId: 'mock-BLS-TEST-001',
+
+      qrString: 'MOCK-QRIS',
+
+      orderPaymentStatus: 'PAID',
+
+      paymentStatus: 'PAID',
+
+      fulfillmentStatus: 'PROCESSING',
+
+      paidAt: paidDate,
+    });
+
+    const gatewayStatus: PaymentStatusResult = {
+      provider: 'mock',
+
+      providerOrderId: 'BLS-TEST-001',
+
+      providerTransactionId: 'mock-BLS-TEST-001',
+
+      status: 'PAID',
+
+      paidAt: paidDate.toISOString(),
+
+      rawResponse: {
+        simulated: true,
+      },
+    };
+
+    paymentsRepositoryMock.findByAccessTokenHash
+      .mockResolvedValueOnce(pendingRow)
+      .mockResolvedValueOnce(settledRow);
+
+    paymentGatewayMock.getPaymentStatus.mockResolvedValue(gatewayStatus);
+
+    paymentSettlementRepositoryMock.applyGatewayStatus.mockResolvedValue({
+      action: 'FINALIZE_SALE',
+
+      targetStatus: 'PAID',
+
+      reason: 'Payment completed.',
+    });
+
+    const result = await service.getPublicPaymentStateByToken('token-test');
+
+    expect(paymentGatewayMock.getPaymentStatus).toHaveBeenCalledWith({
+      providerOrderId: 'BLS-TEST-001',
+
+      providerTransactionId: 'mock-BLS-TEST-001',
+    });
+
+    expect(
+      paymentSettlementRepositoryMock.applyGatewayStatus,
+    ).toHaveBeenCalledWith('order-1', 'payment-1', gatewayStatus);
+
+    expect(result.paymentStatus).toBe('PAID');
+
+    expect(result.fulfillmentStatus).toBe('PROCESSING');
+  });
+
+  it('does not query the gateway before a payment has been created', async () => {
+    const row = createPaymentRow();
+
+    paymentsRepositoryMock.findByAccessTokenHash.mockResolvedValue(row);
+
+    const result = await service.getPublicPaymentStateByToken('token-test');
+
+    expect(paymentGatewayMock.getPaymentStatus).not.toHaveBeenCalled();
+
+    expect(
+      paymentSettlementRepositoryMock.applyGatewayStatus,
+    ).not.toHaveBeenCalled();
+
+    expect(result.paymentStatus).toBe('PENDING');
+  });
+
+  it('keeps the database state available when gateway synchronization fails', async () => {
+    const row = createPaymentRow({
+      provider: 'mock',
+
+      providerOrderId: 'BLS-TEST-001',
+
+      gatewayTransactionId: 'mock-BLS-TEST-001',
+
+      qrString: 'MOCK-QRIS',
+    });
+
+    paymentsRepositoryMock.findByAccessTokenHash
+      .mockResolvedValueOnce(row)
+      .mockResolvedValueOnce(row);
+
+    paymentGatewayMock.getPaymentStatus.mockRejectedValue(
+      new Error('Gateway unavailable'),
+    );
+
+    const result = await service.getPublicPaymentStateByToken('token-test');
+
+    expect(result.paymentStatus).toBe('PENDING');
+
+    expect(
+      paymentSettlementRepositoryMock.applyGatewayStatus,
+    ).not.toHaveBeenCalled();
+  });
+});

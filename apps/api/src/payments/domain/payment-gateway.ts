@@ -12,12 +12,16 @@ export type PaymentStatus = (typeof paymentStatuses)[number];
 
 export type CreateQrisPaymentInput = {
   orderNumber: string;
+
   amount: number;
+
   expiresAt: Date;
 
   customer: {
     name: string;
+
     email: string;
+
     phone: string;
   };
 };
@@ -25,8 +29,20 @@ export type CreateQrisPaymentInput = {
 export type QrisPaymentResult = {
   provider: string;
 
+  /**
+   * Identifier milik merchant / partner.
+   *
+   * Untuk DOKU:
+   * partnerReferenceNo.
+   */
   providerOrderId: string;
 
+  /**
+   * Identifier transaksi yang diberikan payment gateway.
+   *
+   * Untuk DOKU:
+   * referenceNo.
+   */
   providerTransactionId: string | null;
 
   status: PaymentStatus;
@@ -40,6 +56,18 @@ export type QrisPaymentResult = {
   expiresAt: string;
 
   rawResponse?: Record<string, unknown>;
+};
+
+export type GetPaymentStatusInput = {
+  /**
+   * Identifier merchant / partner.
+   */
+  providerOrderId: string;
+
+  /**
+   * Identifier transaksi dari gateway.
+   */
+  providerTransactionId: string | null;
 };
 
 export type PaymentStatusResult = {
@@ -59,7 +87,7 @@ export type PaymentStatusResult = {
 export interface PaymentGateway {
   createQrisPayment(input: CreateQrisPaymentInput): Promise<QrisPaymentResult>;
 
-  getPaymentStatus(providerOrderId: string): Promise<PaymentStatusResult>;
+  getPaymentStatus(input: GetPaymentStatusInput): Promise<PaymentStatusResult>;
 }
 
 export const PAYMENT_GATEWAY = Symbol('PAYMENT_GATEWAY');

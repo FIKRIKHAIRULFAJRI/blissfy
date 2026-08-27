@@ -1,23 +1,22 @@
 import { Injectable } from '@nestjs/common';
 
-import type {
-  CreateQrisPaymentInput,
-  PaymentGateway,
-  PaymentStatusResult,
-  QrisPaymentResult,
+import {
+  type CreateQrisPaymentInput,
+  type GetPaymentStatusInput,
+  type PaymentGateway,
+  type PaymentStatusResult,
+  type QrisPaymentResult,
 } from '../../domain/payment-gateway';
 
 @Injectable()
 export class MockPaymentGateway implements PaymentGateway {
   createQrisPayment(input: CreateQrisPaymentInput): Promise<QrisPaymentResult> {
-    const providerOrderId = input.orderNumber;
-
     const providerTransactionId = `mock-${input.orderNumber}`;
 
     return Promise.resolve({
       provider: 'mock',
 
-      providerOrderId,
+      providerOrderId: input.orderNumber,
 
       providerTransactionId,
 
@@ -25,7 +24,7 @@ export class MockPaymentGateway implements PaymentGateway {
 
       amount: input.amount,
 
-      qrImageUrl: createMockQrisImage(input.orderNumber),
+      qrImageUrl: createMockQrisImage(input.orderNumber, input.amount),
 
       qrString: `MOCK-QRIS:${input.orderNumber}:${input.amount}`,
 
@@ -33,18 +32,21 @@ export class MockPaymentGateway implements PaymentGateway {
 
       rawResponse: {
         environment: 'development',
+
         simulated: true,
+
+        providerTransactionId,
       },
     });
   }
 
-  getPaymentStatus(providerOrderId: string): Promise<PaymentStatusResult> {
+  getPaymentStatus(input: GetPaymentStatusInput): Promise<PaymentStatusResult> {
     return Promise.resolve({
       provider: 'mock',
 
-      providerOrderId,
+      providerOrderId: input.providerOrderId,
 
-      providerTransactionId: `mock-${providerOrderId}`,
+      providerTransactionId: input.providerTransactionId,
 
       status: 'PENDING',
 
@@ -52,15 +54,14 @@ export class MockPaymentGateway implements PaymentGateway {
 
       rawResponse: {
         environment: 'development',
+
         simulated: true,
       },
     });
   }
 }
 
-function createMockQrisImage(orderNumber: string) {
-  const safeOrderNumber = escapeXml(orderNumber);
-
+function createMockQrisImage(orderNumber: string, amount: number) {
   const svg = `
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -75,98 +76,114 @@ function createMockQrisImage(orderNumber: string) {
       />
 
       <rect
-        x="35"
-        y="35"
+        x="30"
+        y="30"
         width="70"
         height="70"
         fill="black"
       />
 
       <rect
-        x="215"
-        y="35"
+        x="220"
+        y="30"
         width="70"
         height="70"
         fill="black"
       />
 
       <rect
-        x="35"
-        y="215"
+        x="30"
+        y="220"
         width="70"
         height="70"
-        fill="black"
-      />
-
-      <rect
-        x="130"
-        y="40"
-        width="25"
-        height="25"
-        fill="black"
-      />
-
-      <rect
-        x="165"
-        y="70"
-        width="25"
-        height="25"
         fill="black"
       />
 
       <rect
         x="125"
-        y="125"
-        width="30"
-        height="30"
+        y="40"
+        width="20"
+        height="20"
         fill="black"
       />
 
       <rect
-        x="170"
-        y="125"
+        x="155"
+        y="40"
+        width="20"
+        height="20"
+        fill="black"
+      />
+
+      <rect
+        x="125"
+        y="75"
+        width="20"
+        height="20"
+        fill="black"
+      />
+
+      <rect
+        x="150"
+        y="115"
         width="25"
         height="25"
         fill="black"
       />
 
       <rect
-        x="205"
-        y="145"
-        width="30"
-        height="30"
-        fill="black"
-      />
-
-      <rect
-        x="120"
-        y="180"
+        x="115"
+        y="150"
         width="25"
         height="25"
         fill="black"
       />
 
       <rect
-        x="160"
-        y="190"
-        width="35"
-        height="35"
-        fill="black"
-      />
-
-      <rect
-        x="215"
-        y="205"
+        x="185"
+        y="150"
         width="25"
         height="25"
         fill="black"
       />
 
       <rect
-        x="250"
-        y="240"
-        width="30"
-        height="30"
+        x="150"
+        y="185"
+        width="25"
+        height="25"
+        fill="black"
+      />
+
+      <rect
+        x="220"
+        y="220"
+        width="20"
+        height="20"
+        fill="black"
+      />
+
+      <rect
+        x="255"
+        y="220"
+        width="20"
+        height="20"
+        fill="black"
+      />
+
+      <rect
+        x="220"
+        y="255"
+        width="20"
+        height="20"
+        fill="black"
+      />
+
+      <rect
+        x="255"
+        y="255"
+        width="20"
+        height="20"
         fill="black"
       />
 
@@ -175,10 +192,10 @@ function createMockQrisImage(orderNumber: string) {
         y="305"
         text-anchor="middle"
         font-family="Arial, sans-serif"
-        font-size="10"
+        font-size="9"
         fill="black"
       >
-        MOCK QRIS - ${safeOrderNumber}
+        MOCK ${escapeXml(orderNumber)} ${amount}
       </text>
     </svg>
   `;
