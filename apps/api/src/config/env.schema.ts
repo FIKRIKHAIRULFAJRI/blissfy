@@ -23,6 +23,18 @@ export const envSchema = z.object({
   SHIPPING_ORIGIN_DISTRICT_ID: z.string().trim().min(1).optional(),
 
   CRON_SECRET: z.string().trim().min(16).optional(),
+
+  PAYMENT_GATEWAY_MODE: z.enum(['mock', 'doku']).default('mock'),
+
+  DOKU_BASE_URL: z.string().url().default('https://api-sandbox.doku.com'),
+
+  DOKU_CLIENT_ID: z.string().trim().min(1).optional(),
+
+  DOKU_SECRET_KEY: z.string().trim().min(1).optional(),
+
+  DOKU_PRIVATE_KEY_PATH: z.string().trim().min(1).optional(),
+
+  DOKU_IS_PRODUCTION: z.enum(['true', 'false']).default('false'),
 });
 
 export type Env = z.infer<typeof envSchema>;

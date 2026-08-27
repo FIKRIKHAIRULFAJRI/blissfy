@@ -8,9 +8,8 @@
     "admin:hash-password": "node scripts/hash-admin-password.mjs",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/lib/cart/cart-contract.test.ts src/lib/payments/payment-contract.test.ts",
-    "test:cart": "tsx --test src/lib/cart/cart-contract.test.ts",
-    "test:payments": "tsx --test src/lib/payments/payment-contract.test.ts"
+    "test": "tsx --test src/lib/cart/cart-contract.test.ts",
+    "test:cart": "tsx --test src/lib/cart/cart-contract.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",

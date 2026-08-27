@@ -948,7 +948,7 @@ export function CheckoutView() {
           </button>
 
           <p className="text-sm leading-6 text-ink-muted">
-            Setelah pesanan dibuat, stok ditahan selama 10 menit. QRIS Midtrans
+            Setelah pesanan dibuat, stok ditahan selama 10 menit. QRIS
             akan diaktifkan pada tahap berikutnya.
           </p>
         </form>
