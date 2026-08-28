@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { buttonClasses } from "@/components/ui/button";
 
+import { Container } from "@/components/ui/Container";
+
 export function HeroCampaign() {
   return (
-    <section className="container-page pt-6">
+    <Container as="section" className="pt-6">
       <div className="relative isolate min-h-[620px] overflow-hidden rounded-[var(--radius-xl)] bg-olive text-surface md:min-h-[700px] lg:min-h-[720px]">
         <div
           aria-hidden
@@ -49,6 +51,6 @@ export function HeroCampaign() {
           </div>
         </div>
       </div>
-    </section>
+    </Container>
   );
 }

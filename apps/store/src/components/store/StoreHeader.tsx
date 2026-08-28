@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Container } from "@/components/ui/Container";
 import { buttonClasses } from "@/components/ui/button";
 import { CartCountBadge } from "@/components/store/CartCountBadge";
 import { cn } from "@/lib/utils";
@@ -17,13 +18,13 @@ export function StoreHeader() {
         Lewati ke konten
       </a>
       <div className="bg-ink text-surface">
-        <div className="container-page flex min-h-9 items-center justify-center px-4 text-center text-xs font-medium sm:text-sm">
+        <Container className="flex min-h-9 items-center justify-center text-center text-xs font-medium sm:text-sm">
           Belanja fashion Blissfy.co tanpa akun dengan pembayaran dan
           pengiriman yang jelas.
-        </div>
+        </Container>
       </div>
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
-        <div className="container-page flex h-16 items-center justify-between gap-4 lg:h-20">
+        <Container className="flex h-16 items-center justify-between gap-4 lg:h-20">
           <details className="group lg:hidden">
             <summary
               aria-label="Buka navigasi"
@@ -79,7 +80,7 @@ export function StoreHeader() {
             <Link
               className={cn(
                 buttonClasses({ size: "compact", variant: "secondary" }),
-                "min-h-11 px-4",
+                "min-h-11 px-4 max-[359px]:px-1",
               )}
               href="/cart"
             >
@@ -87,7 +88,7 @@ export function StoreHeader() {
               <CartCountBadge />
             </Link>
           </div>
-        </div>
+        </Container>
       </header>
     </>
   );

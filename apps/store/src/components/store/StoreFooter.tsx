@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Container } from "@/components/ui/Container";
 
 const footerLinks = [
   { label: "Kontak", href: "/contact" },
@@ -10,7 +11,7 @@ const footerLinks = [
 export function StoreFooter() {
   return (
     <footer className="mt-20 border-t border-border bg-surface">
-      <div className="container-page grid gap-10 py-10 md:grid-cols-[1.2fr_0.8fr] md:py-14">
+      <Container className="grid gap-10 py-10 md:grid-cols-[1.2fr_0.8fr] md:py-14">
         <div>
           <Link className="text-2xl font-semibold leading-none" href="/">
             Blissfy.co
@@ -30,7 +31,7 @@ export function StoreFooter() {
             </Link>
           ))}
         </nav>
-      </div>
+      </Container>
     </footer>
   );
 }

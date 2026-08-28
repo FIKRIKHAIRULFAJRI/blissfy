@@ -212,7 +212,7 @@ button:disabled {
 .container-page {
   width: min(100%, 1440px);
   margin-inline: auto;
-  padding-inline: 1rem;
+  padding-inline: var(--page-margin-mobile);
 }
 
 .skip-link {
@@ -289,21 +289,9 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-@media (min-width: 640px) {
-  .container-page {
-    padding-inline: 1.5rem;
-  }
-}
-
-@media (min-width: 768px) {
-  .container-page {
-    padding-inline: 2rem;
-  }
-}
-
 @media (min-width: 1024px) {
   .container-page {
-    padding-inline: 3rem;
+    padding-inline: var(--page-margin-desktop);
   }
 
   .text-display-xl {
@@ -319,12 +307,6 @@ button:disabled {
     font-size: var(--font-display-size);
     letter-spacing: var(--tracking-display);
     line-height: var(--line-display);
-  }
-}
-
-@media (min-width: 1440px) {
-  .container-page {
-    padding-inline: 3.5rem;
   }
 }
 
