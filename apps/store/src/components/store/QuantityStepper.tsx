@@ -22,10 +22,10 @@ export function QuantityStepper({
   const safeMax = Math.max(min, max);
 
   return (
-    <div className="inline-flex min-h-11 overflow-hidden rounded-[var(--radius-pill)] border border-border bg-surface">
+    <div className="inline-grid min-h-11 grid-cols-[44px_44px_44px] overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-strong)] bg-[var(--color-surface)]">
       <button
         aria-label="Kurangi jumlah"
-        className="grid min-w-11 place-items-center text-lg font-semibold text-ink hover:bg-surface-muted disabled:text-ink-muted"
+        className="grid min-w-11 place-items-center text-lg font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-container)] disabled:text-[var(--color-disabled-text)]"
         disabled={disabled || value <= min}
         onClick={() => onChange(Math.max(min, value - 1))}
         type="button"
@@ -35,8 +35,8 @@ export function QuantityStepper({
       <input
         aria-label="Jumlah"
         className={cn(
-          "w-14 border-x border-border bg-surface text-center text-sm font-semibold text-ink outline-none",
-          "focus:bg-surface-muted",
+          "w-11 border-x border-[var(--color-border)] bg-[var(--color-surface)] text-center text-sm font-medium text-[var(--color-text-primary)] outline-none",
+          "focus:bg-[var(--color-surface-container)]",
         )}
         disabled={disabled}
         id={id}
@@ -54,7 +54,7 @@ export function QuantityStepper({
       />
       <button
         aria-label="Tambah jumlah"
-        className="grid min-w-11 place-items-center text-lg font-semibold text-ink hover:bg-surface-muted disabled:text-ink-muted"
+        className="grid min-w-11 place-items-center text-lg font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-container)] disabled:text-[var(--color-disabled-text)]"
         disabled={disabled || value >= safeMax}
         onClick={() => onChange(Math.min(safeMax, value + 1))}
         type="button"

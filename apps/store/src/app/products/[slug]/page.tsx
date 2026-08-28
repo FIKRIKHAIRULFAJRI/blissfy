@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProductCard } from "@/components/store/ProductCard";
+import { ProductGallery } from "@/components/store/ProductGallery";
 import { ProductPurchaseForm } from "@/components/store/ProductPurchaseForm";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { StoreHeader } from "@/components/store/StoreHeader";
-import { getProductBySlug } from "@/lib/products";
+import { Container } from "@/components/ui/Container";
+import { getCatalogProducts, getProductBySlug } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
@@ -43,58 +45,81 @@ export default async function ProductDetailPage({
     notFound();
   }
 
+  const recommendations = (await getCatalogProducts({ limit: 5 }))
+    .filter((candidate) => candidate.id !== product.id)
+    .slice(0, 4);
+
   return (
     <>
       <StoreHeader />
-      <main className="container-page py-8 md:py-14" id="main-content">
-        <nav
-          aria-label="Breadcrumb"
-          className="mb-6 text-sm font-medium text-ink-muted"
-        >
-          <Link className="hover:text-ink" href="/products">
-            Katalog
-          </Link>
-          <span aria-hidden className="mx-2">
-            /
-          </span>
-          <span className="text-ink-soft">{product.name}</span>
-        </nav>
+      <Container
+        as="main"
+        className="pt-[calc(var(--space-6)+var(--space-5))]"
+        id="main-content"
+      >
+        <div className="mx-auto max-w-7xl">
+          <nav aria-label="Breadcrumb">
+            <ol className="text-label flex flex-wrap items-center gap-[var(--space-2)] uppercase text-[var(--color-text-muted)]">
+              <li>
+                <Link
+                  className="transition-colors hover:text-[var(--color-text-primary)]"
+                  href="/"
+                >
+                  Home
+                </Link>
+              </li>
+              <li aria-hidden>›</li>
+              <li>
+                <Link
+                  className="transition-colors hover:text-[var(--color-text-primary)]"
+                  href="/products"
+                >
+                  Produk
+                </Link>
+              </li>
+              <li aria-hidden>›</li>
+              <li>{product.categoryName}</li>
+              <li aria-hidden>›</li>
+              <li
+                aria-current="page"
+                className="text-[var(--color-text-primary)]"
+              >
+                {product.name}
+              </li>
+            </ol>
+          </nav>
 
-        <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:gap-12">
-          <section aria-label={`Galeri ${product.name}`} className="space-y-4">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[var(--radius-xl)] bg-surface-muted">
-              <Image
-                alt={product.primaryImage.altText}
-                className="object-cover"
-                fill
-                priority
-                sizes="(min-width: 1024px) 56vw, 100vw"
-                src={product.primaryImage.url}
-              />
-            </div>
-            {product.images.length > 1 ? (
-              <div className="grid grid-cols-4 gap-3">
-                {product.images.slice(0, 4).map((image) => (
-                  <div
-                    className="relative aspect-[4/5] overflow-hidden rounded-[var(--radius-md)] bg-surface-muted"
-                    key={image.id}
-                  >
-                    <Image
-                      alt={image.altText}
-                      className="object-cover"
-                      fill
-                      sizes="25vw"
-                      src={image.url}
-                    />
+          <div className="mt-[var(--space-5)] grid grid-cols-1 gap-[var(--space-6)] md:grid-cols-2">
+            <ProductGallery
+              images={product.images}
+              primaryImage={product.primaryImage}
+              productName={product.name}
+            />
+            <ProductPurchaseForm product={product} />
+          </div>
+
+          {recommendations.length > 0 ? (
+            <section
+              aria-labelledby="product-recommendations-heading"
+              className="mt-[var(--space-6)] border-t border-[var(--color-border)] pt-[var(--space-6)]"
+            >
+              <h2
+                className="text-heading uppercase tracking-[0.05em] text-[var(--color-text-primary)]"
+                id="product-recommendations-heading"
+              >
+                You May Also Like
+              </h2>
+              <div className="mt-[var(--space-5)] grid grid-cols-1 gap-x-[var(--space-3)] gap-y-[var(--space-5)] min-[360px]:grid-cols-2 lg:grid-cols-4 lg:gap-x-[var(--space-4)]">
+                {recommendations.map((recommendation) => (
+                  <div className="min-w-0" key={recommendation.id}>
+                    <ProductCard product={recommendation} />
                   </div>
                 ))}
               </div>
-            ) : null}
-          </section>
-
-          <ProductPurchaseForm product={product} />
+            </section>
+          ) : null}
         </div>
-      </main>
+      </Container>
       <StoreFooter />
     </>
   );

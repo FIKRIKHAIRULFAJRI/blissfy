@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { buttonClasses } from "@/components/ui/button";
 import { QuantityStepper } from "@/components/store/QuantityStepper";
+import { StoreButton } from "@/components/store/ui/StoreButton";
+import { StoreFieldMessage } from "@/components/store/ui/StoreFieldMessage";
 import { ensureCartHydration, useCartStore } from "@/lib/cart/store";
 import { formatRupiah } from "@/lib/pricing";
 import type { ProductDetail } from "@/lib/products";
@@ -51,7 +52,6 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
   const selectedVariantAvailable =
     Boolean(selectedVariant?.isActive) && (selectedVariant?.stock ?? 0) > 0;
   const maxQuantity = selectedVariantAvailable ? selectedVariant!.stock : 1;
-  const saving = Math.max(0, product.normalPrice - product.salePrice);
 
   function hasAvailableColor(colorName: string) {
     return product.variants.some(
@@ -135,59 +135,53 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
   }
 
   return (
-    <section className="lg:sticky lg:top-28 lg:self-start">
-      <p className="text-xs font-semibold uppercase leading-tight text-olive">
+    <section className="md:pt-[var(--space-4)] lg:sticky lg:top-28 lg:self-start">
+      <p className="text-label uppercase text-[var(--color-text-muted)]">
         {product.categoryName}
       </p>
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <h1 className="text-4xl font-semibold leading-tight text-ink md:text-5xl">
-          {product.name}
-        </h1>
-        <Badge className="w-fit" tone={product.isAvailable ? "success" : "warning"}>
-          {product.isAvailable ? "Ready stock" : "Stok habis"}
-        </Badge>
-      </div>
+      <h1 className="text-display mt-[var(--space-3)] text-[var(--color-text-primary)]">
+        {product.name}
+      </h1>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <p className="text-2xl font-semibold text-ink">
+      <div className="mt-[var(--space-4)] flex flex-wrap items-baseline gap-[var(--space-3)]">
+        <p className="text-body-lg font-medium text-[var(--color-text-primary)]">
           {formatRupiah(product.salePrice)}
         </p>
         {product.salePrice < product.normalPrice ? (
           <>
-            <p className="text-base font-medium text-ink-muted line-through">
+            <p className="text-sm font-medium text-[var(--color-text-muted)] line-through">
               {formatRupiah(product.normalPrice)}
             </p>
             {product.discountLabel ? (
-              <Badge tone="warning">{product.discountLabel}</Badge>
+              <p className="text-label uppercase text-[var(--color-text-muted)]">
+                {product.discountLabel}
+              </p>
             ) : null}
-            <p className="text-sm font-semibold text-success">
-              Hemat {formatRupiah(saving)}
-            </p>
           </>
         ) : null}
       </div>
 
-      <p className="mt-6 text-base leading-8 text-ink-soft">
-        {product.description}
-      </p>
-
-      <div className="mt-8 space-y-8 border-y border-border py-8">
-        <div>
-          <h2 className="text-sm font-semibold text-ink">Warna</h2>
-          <div className="mt-3 flex flex-wrap gap-3">
+      <div className="mt-[var(--space-5)] space-y-[var(--space-5)]">
+        <fieldset>
+          <legend className="text-label uppercase text-[var(--color-text-secondary)]">
+            Warna: {selectedColor || "Pilih warna"}
+          </legend>
+          <div className="mt-[var(--space-3)] flex flex-wrap gap-[var(--space-3)]">
             {colors.map((color) => {
               const disabled = !hasAvailableColor(color.name);
               const selected = selectedColor === color.name;
 
               return (
                 <button
+                  aria-label={`${color.name}${disabled ? " tidak tersedia" : ""}`}
                   aria-pressed={selected}
                   className={cn(
-                    "inline-flex min-h-11 items-center gap-2 rounded-full border bg-surface px-3 text-sm font-medium transition-colors",
+                    "relative grid size-11 place-items-center rounded-full transition-[opacity,box-shadow]",
                     selected
-                      ? "border-ink text-ink"
-                      : "border-border text-ink-soft hover:border-border-strong",
-                    disabled && "border-border bg-surface-muted text-ink-muted",
+                      ? "ring-1 ring-[var(--color-text-brand)] ring-offset-4 ring-offset-[var(--color-canvas)]"
+                      : "hover:ring-1 hover:ring-[var(--color-border-strong)] hover:ring-offset-2 hover:ring-offset-[var(--color-canvas)]",
+                    disabled &&
+                      "opacity-45 after:absolute after:left-2 after:right-2 after:top-1/2 after:h-px after:-rotate-45 after:bg-[var(--color-text-muted)]",
                   )}
                   disabled={disabled}
                   key={color.name}
@@ -196,28 +190,22 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
                 >
                   <span
                     aria-hidden
-                    className="size-5 rounded-full border border-border-strong"
-                    style={{ backgroundColor: color.value ?? "#FFFEFA" }}
+                    className="size-8 rounded-full border border-[var(--color-border-strong)]"
+                    style={{
+                      backgroundColor: color.value ?? "var(--color-surface)",
+                    }}
                   />
-                  {color.name}
-                  {disabled ? " habis" : null}
                 </button>
               );
             })}
           </div>
-        </div>
+        </fieldset>
 
-        <div>
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold text-ink">Ukuran</h2>
-            <Link
-              className="text-sm font-semibold text-olive hover:text-ink"
-              href="/products"
-            >
-              Panduan ukuran
-            </Link>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-3">
+        <fieldset>
+          <legend className="text-label uppercase text-[var(--color-text-secondary)]">
+            Ukuran
+          </legend>
+          <div className="mt-[var(--space-3)] grid grid-cols-3 gap-[var(--space-3)] sm:grid-cols-5">
             {sizes.map((size) => {
               const disabled = !hasAvailableSize(size);
               const selected = selectedSize === size;
@@ -226,12 +214,12 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
                 <button
                   aria-pressed={selected}
                   className={cn(
-                    "relative grid min-h-11 min-w-11 place-items-center rounded-full border px-4 text-sm font-semibold transition-colors",
+                    "relative grid min-h-11 min-w-11 place-items-center rounded-[var(--radius-sm)] border px-[var(--space-2)] text-sm font-medium transition-colors",
                     selected
-                      ? "border-ink bg-ink text-surface"
-                      : "border-border-strong bg-surface text-ink hover:bg-surface-muted",
+                      ? "border-[var(--color-text-brand)] bg-[var(--color-text-brand)] text-[var(--color-action-primary-text)]"
+                      : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]",
                     disabled &&
-                      "border-border bg-surface-muted text-ink-muted after:absolute after:left-3 after:right-3 after:top-1/2 after:h-px after:-rotate-12 after:bg-ink-muted",
+                      "border-[var(--color-border)] bg-[var(--color-surface-container)] text-[var(--color-text-muted)] after:absolute after:left-3 after:right-3 after:top-1/2 after:h-px after:-rotate-12 after:bg-[var(--color-text-muted)]",
                   )}
                   disabled={disabled}
                   key={size}
@@ -243,69 +231,118 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
               );
             })}
           </div>
-        </div>
+        </fieldset>
 
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div className="flex items-end justify-between gap-[var(--space-4)]">
           <div>
-            <label
-              className="text-sm font-semibold text-ink"
-              htmlFor="product-quantity"
-            >
-              Jumlah
-            </label>
-            <p className="mt-2 text-sm leading-6 text-ink-soft">
+            <p className="text-label uppercase text-[var(--color-text-secondary)]">
+              {selectedVariantAvailable ? "Stok tersedia" : "Ketersediaan"}
+            </p>
+            <p className="mt-[var(--space-2)] text-sm text-[var(--color-text-muted)]">
               {selectedVariantAvailable
-                ? `Stok tersedia ${selectedVariant!.stock}. Berat ${selectedVariant!.weightGram} gram per item.`
+                ? `${selectedVariant!.stock} item`
                 : selectedColor && selectedSize
                   ? "Varian ini sedang tidak tersedia."
                   : "Pilih warna dan ukuran untuk melihat stok."}
             </p>
           </div>
-          <QuantityStepper
-            disabled={!selectedVariantAvailable}
-            id="product-quantity"
-            max={maxQuantity}
-            onChange={(value) => setQuantity(value)}
-            value={Math.min(quantity, maxQuantity)}
-          />
-        </div>
-
-        {error ? (
-          <p className="rounded-[var(--radius-md)] bg-danger-bg p-3 text-sm font-medium text-danger">
-            {error}
-          </p>
-        ) : null}
-        {message ? (
-          <div className="rounded-[var(--radius-md)] bg-success-bg p-3 text-sm font-medium text-success">
-            {message}{" "}
-            <Link className="underline" href="/cart">
-              Lihat keranjang
-            </Link>
+          <div className="shrink-0">
+            <label
+              className="text-label block text-right uppercase text-[var(--color-text-secondary)]"
+              htmlFor="product-quantity"
+            >
+              Jumlah
+            </label>
+            <div className="mt-[var(--space-2)]">
+              <QuantityStepper
+                disabled={!selectedVariantAvailable}
+                id="product-quantity"
+                max={maxQuantity}
+                onChange={(value) => setQuantity(value)}
+                value={Math.min(quantity, maxQuantity)}
+              />
+            </div>
           </div>
-        ) : null}
+        </div>
       </div>
 
-      <button
-        className={buttonClasses({
-          className: "mt-8 w-full",
-          size: "large",
-        })}
+      {error ? (
+        <StoreFieldMessage
+          className="mt-[var(--space-4)] block rounded-[var(--radius-default)] bg-[var(--color-error-surface)] p-[var(--space-3)]"
+          role="alert"
+          variant="error"
+        >
+            {error}
+        </StoreFieldMessage>
+      ) : null}
+      {message ? (
+        <div
+          className="mt-[var(--space-4)] rounded-[var(--radius-default)] bg-[var(--color-surface-container)] p-[var(--space-3)] text-sm font-medium text-[var(--color-text-secondary)]"
+          role="status"
+        >
+          {message}{" "}
+          <Link className="underline underline-offset-4" href="/cart">
+            Lihat keranjang
+          </Link>
+        </div>
+      ) : null}
+
+      <StoreButton
+        className="mt-[var(--space-5)] w-full !rounded-[var(--radius-sm)] uppercase tracking-[0.05em]"
         disabled={!hydrated || !selectedVariantAvailable}
         onClick={handleAddToCart}
+        size="large"
         type="button"
       >
         {!hydrated ? "Menyiapkan keranjang..." : "Tambah ke keranjang"}
-      </button>
+      </StoreButton>
 
-      <div className="mt-8 rounded-[var(--radius-lg)] bg-info-bg p-5">
-        <h2 className="text-sm font-semibold text-info">
-          Informasi pengiriman
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-info">
-          Berat varian disimpan dalam gram untuk perhitungan ongkir pada tahap
-          pengiriman berikutnya.
-        </p>
+      <div className="mt-[var(--space-5)] border-b border-[var(--color-border)]">
+        <ProductAccordion title="Detail produk">
+          <p>{product.description}</p>
+        </ProductAccordion>
+        <ProductAccordion title="Informasi pengiriman">
+          <p>
+            {selectedVariant
+              ? `Berat varian ${selectedVariant.colorName}, ukuran ${selectedVariant.size}, adalah ${selectedVariant.weightGram} gram per item. `
+              : "Pilih warna dan ukuran untuk melihat berat varian. "}
+            Berat digunakan untuk perhitungan ongkir pada tahap pengiriman.
+          </p>
+        </ProductAccordion>
       </div>
     </section>
+  );
+}
+
+function ProductAccordion({
+  children,
+  title,
+}: {
+  children: ReactNode;
+  title: string;
+}) {
+  return (
+    <details className="group border-t border-[var(--color-border)]">
+      <summary className="text-body flex cursor-pointer list-none items-center justify-between gap-[var(--space-3)] py-[var(--space-3)] font-medium text-[var(--color-text-primary)] [&::-webkit-details-marker]:hidden">
+        {title}
+        <svg
+          aria-hidden
+          className="size-5 shrink-0 transition-transform duration-[var(--duration-default)] group-open:rotate-180"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="m6 9 6 6 6-6"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.5"
+          />
+        </svg>
+      </summary>
+      <div className="text-body pb-[var(--space-4)] pr-[var(--space-5)] text-[var(--color-text-secondary)]">
+        {children}
+      </div>
+    </details>
   );
 }
