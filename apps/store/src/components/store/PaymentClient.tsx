@@ -8,12 +8,9 @@ import {
   useState,
 } from "react";
 
-import { Button } from "@/components/ui/button";
-
+import { StoreButton } from "@/components/store/ui/StoreButton";
 import type { PaymentStatus } from "@/lib/payments/status";
-
 import { formatRupiah } from "@/lib/pricing";
-
 import { getPublicApiUrl } from "@/lib/public-api";
 
 type PaymentState = {
@@ -360,7 +357,7 @@ export function PaymentClient({
                 </p>
               </div>
 
-              <Button
+              <StoreButton
                 className="w-full"
                 disabled={
                   isCreating
@@ -376,9 +373,9 @@ export function PaymentClient({
                       payment.qrString
                     ? "Buat ulang QRIS"
                     : "Buat QRIS"}
-              </Button>
+              </StoreButton>
 
-              <Button
+              <StoreButton
                 className="w-full"
                 onClick={
                   refreshStatus
@@ -386,7 +383,7 @@ export function PaymentClient({
                 variant="soft"
               >
                 Cek status
-              </Button>
+              </StoreButton>
             </div>
           </div>
         </div>
@@ -432,7 +429,7 @@ export function PaymentClient({
             {errorMessage}
           </p>
 
-          <Button
+          <StoreButton
             className="mt-3"
             onClick={
               payment.qrImageUrl
@@ -443,7 +440,7 @@ export function PaymentClient({
             variant="secondary"
           >
             Coba lagi
-          </Button>
+          </StoreButton>
         </div>
       ) : null}
     </div>

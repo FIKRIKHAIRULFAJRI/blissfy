@@ -20,12 +20,17 @@ import { ensureCartHydration, useCartStore } from "@/lib/cart/store";
 import { formatRupiah } from "@/lib/pricing";
 import { getPublicApiUrl } from "@/lib/public-api";
 import type { ShippingRateQuote, ShippingRegion } from "@/lib/shipping/types";
-import { buttonClasses } from "@/components/ui/button";
+import {
+  StoreButton,
+  storeButtonClasses,
+} from "@/components/store/ui/StoreButton";
 import { Badge } from "@/components/ui/badge";
+import { StoreCheckbox } from "@/components/store/ui/StoreCheckbox";
+import { StoreFieldMessage } from "@/components/store/ui/StoreFieldMessage";
+import { StoreInput } from "@/components/store/ui/StoreInput";
+import { StoreSelect } from "@/components/store/ui/StoreSelect";
+import { StoreTextarea } from "@/components/store/ui/StoreTextarea";
 import { cn } from "@/lib/utils";
-
-const fieldClass =
-  "mt-2 min-h-12 w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm text-ink outline-none focus:border-olive disabled:bg-surface-muted disabled:text-ink-muted";
 
 type RegionState = {
   data: ShippingRegion[];
@@ -478,7 +483,7 @@ export function CheckoutView() {
         </p>
 
         <Link
-          className={buttonClasses({
+          className={storeButtonClasses({
             className: "mt-6",
           })}
           href="/products"
@@ -763,7 +768,7 @@ export function CheckoutView() {
               </div>
 
               <button
-                className={buttonClasses({
+                className={storeButtonClasses({
                   className:
                     "w-full sm:w-fit",
                   variant: "secondary",
@@ -788,8 +793,8 @@ export function CheckoutView() {
                     {shippingRates.error}
                   </p>
 
-                  <button
-                    className="mt-3 min-h-10 rounded-full border border-danger px-4 text-sm font-semibold"
+                  <StoreButton
+                    className="mt-3"
                     disabled={
                       !canCheckShipping ||
                       shippingRates.loading
@@ -797,10 +802,12 @@ export function CheckoutView() {
                     onClick={
                       handleCheckShipping
                     }
+                    size="compact"
                     type="button"
+                    variant="destructive"
                   >
                     Coba lagi
-                  </button>
+                  </StoreButton>
                 </div>
               ) : null}
 
@@ -896,10 +903,23 @@ export function CheckoutView() {
                 )}
               />
 
-              <label className="flex gap-3 rounded-[var(--radius-lg)] border border-border bg-surface-muted p-4 text-sm leading-6 text-ink-soft">
-                <input
-                  className="mt-1 size-4 accent-ink"
-                  type="checkbox"
+              <label
+                className="flex min-h-11 gap-3 rounded-[var(--radius-lg)] border border-border bg-surface-muted p-4 text-sm leading-6 text-ink-soft"
+                htmlFor="checkout-termsAccepted"
+              >
+                <StoreCheckbox
+                  aria-describedby={
+                    form.formState.errors
+                      .termsAccepted?.message
+                      ? "checkout-termsAccepted-error"
+                      : undefined
+                  }
+                  aria-invalid={Boolean(
+                    form.formState.errors
+                      .termsAccepted?.message,
+                  )}
+                  className="mt-1"
+                  id="checkout-termsAccepted"
                   {...form.register(
                     "termsAccepted",
                   )}
@@ -913,14 +933,18 @@ export function CheckoutView() {
 
               {form.formState.errors
                 .termsAccepted?.message ? (
-                <p className="text-sm font-medium text-danger">
+                <StoreFieldMessage
+                  className="block font-medium"
+                  id="checkout-termsAccepted-error"
+                  variant="error"
+                >
                   {
                     form.formState
                       .errors
                       .termsAccepted
                       .message
                   }
-                </p>
+                </StoreFieldMessage>
               ) : null}
             </FormSection>
           </fieldset>
@@ -932,7 +956,7 @@ export function CheckoutView() {
           ) : null}
 
           <button
-            className={buttonClasses({
+            className={storeButtonClasses({
               className: "w-full",
               size: "large",
             })}
@@ -1252,8 +1276,14 @@ function TextField({
   registration: UseFormRegisterReturn;
   type?: string;
 }) {
+  const fieldId = `checkout-${registration.name.replace(/\./g, "-")}`;
+  const errorId = `${fieldId}-error`;
+
   return (
-    <label className="block text-sm font-semibold text-ink">
+    <label
+      className="block text-sm font-semibold text-ink"
+      htmlFor={fieldId}
+    >
       {label}{" "}
       {optional ? (
         <span className="text-ink-muted">
@@ -1261,8 +1291,11 @@ function TextField({
         </span>
       ) : null}
 
-      <input
-        className={fieldClass}
+      <StoreInput
+        aria-describedby={error ? errorId : undefined}
+        aria-invalid={Boolean(error)}
+        className="mt-2"
+        id={fieldId}
         inputMode={inputMode}
         placeholder={placeholder}
         type={type}
@@ -1270,9 +1303,13 @@ function TextField({
       />
 
       {error ? (
-        <span className="mt-2 block text-sm font-medium text-danger">
+        <StoreFieldMessage
+          className="mt-2 block font-medium"
+          id={errorId}
+          variant="error"
+        >
           {error}
-        </span>
+        </StoreFieldMessage>
       ) : null}
     </label>
   );
@@ -1308,15 +1345,38 @@ function SelectField({
     !stateError &&
     options.length === 0;
 
+  const fieldId = `checkout-${registration.name.replace(/\./g, "-")}`;
+  const stateErrorId = `${fieldId}-state-error`;
+  const emptyHintId = `${fieldId}-empty-hint`;
+  const errorId = `${fieldId}-error`;
+
+  const describedBy =
+    [
+      stateError ? stateErrorId : null,
+      isEmpty && !disabled ? emptyHintId : null,
+      error ? errorId : null,
+    ]
+      .filter(
+        (value): value is string =>
+          Boolean(value),
+      )
+      .join(" ") || undefined;
+
   return (
-    <label className="block text-sm font-semibold text-ink">
+    <label
+      className="block text-sm font-semibold text-ink"
+      htmlFor={fieldId}
+    >
       {label}
 
-      <select
-        className={fieldClass}
+      <StoreSelect
+        aria-describedby={describedBy}
+        aria-invalid={Boolean(error)}
+        className="mt-2"
         disabled={
           disabled || loading
         }
+        id={fieldId}
         {...registration}
         onChange={(event) => {
           registration.onChange(event);
@@ -1337,10 +1397,14 @@ function SelectField({
             {option.name}
           </option>
         ))}
-      </select>
+      </StoreSelect>
 
       {stateError ? (
-        <span className="mt-2 block text-sm font-medium text-danger">
+        <StoreFieldMessage
+          className="mt-2 block font-medium"
+          id={stateErrorId}
+          variant="error"
+        >
           {stateError}{" "}
           <button
             className="underline"
@@ -1349,19 +1413,26 @@ function SelectField({
           >
             Coba lagi
           </button>
-        </span>
+        </StoreFieldMessage>
       ) : null}
 
       {isEmpty && !disabled ? (
-        <span className="mt-2 block text-sm font-medium text-ink-muted">
+        <StoreFieldMessage
+          className="mt-2 block font-medium"
+          id={emptyHintId}
+        >
           Data belum tersedia.
-        </span>
+        </StoreFieldMessage>
       ) : null}
 
       {error ? (
-        <span className="mt-2 block text-sm font-medium text-danger">
+        <StoreFieldMessage
+          className="mt-2 block font-medium"
+          id={errorId}
+          variant="error"
+        >
           {error}
-        </span>
+        </StoreFieldMessage>
       ) : null}
     </label>
   );
@@ -1378,8 +1449,14 @@ function TextAreaField({
   optional?: boolean;
   registration: UseFormRegisterReturn;
 }) {
+  const fieldId = `checkout-${registration.name.replace(/\./g, "-")}`;
+  const errorId = `${fieldId}-error`;
+
   return (
-    <label className="block text-sm font-semibold text-ink">
+    <label
+      className="block text-sm font-semibold text-ink"
+      htmlFor={fieldId}
+    >
       {label}{" "}
       {optional ? (
         <span className="text-ink-muted">
@@ -1387,16 +1464,23 @@ function TextAreaField({
         </span>
       ) : null}
 
-      <textarea
-        className={`${fieldClass} min-h-28 py-3`}
+      <StoreTextarea
+        aria-describedby={error ? errorId : undefined}
+        aria-invalid={Boolean(error)}
+        className="mt-2"
+        id={fieldId}
         rows={4}
         {...registration}
       />
 
       {error ? (
-        <span className="mt-2 block text-sm font-medium text-danger">
+        <StoreFieldMessage
+          className="mt-2 block font-medium"
+          id={errorId}
+          variant="error"
+        >
           {error}
-        </span>
+        </StoreFieldMessage>
       ) : null}
     </label>
   );

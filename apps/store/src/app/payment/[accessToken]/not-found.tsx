@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { buttonClasses } from "@/components/ui/button";
+
+import { storeButtonClasses } from "@/components/store/ui/StoreButton";
 
 export default function PaymentNotFound() {
   return (
@@ -8,14 +9,22 @@ export default function PaymentNotFound() {
         <p className="text-xs font-semibold uppercase text-danger">
           Pesanan tidak ditemukan
         </p>
+
         <h1 className="mt-3 text-3xl font-semibold text-ink">
           Tautan pembayaran tidak valid
         </h1>
+
         <p className="mt-4 text-sm leading-6 text-ink-soft">
           Nomor pesanan saja tidak cukup untuk membuka detail. Gunakan tautan
           rahasia yang diberikan setelah checkout berhasil.
         </p>
-        <Link className={buttonClasses({ className: "mt-6" })} href="/cart">
+
+        <Link
+          className={storeButtonClasses({
+            className: "mt-6",
+          })}
+          href="/cart"
+        >
           Kembali ke keranjang
         </Link>
       </section>

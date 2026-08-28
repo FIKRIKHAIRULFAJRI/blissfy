@@ -3,21 +3,25 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import type {
-  CartValidationResponse,
-  InvalidCartItem,
-} from "@/lib/cart/types";
+
+import { Badge } from "@/components/ui/badge";
+import { QuantityStepper } from "@/components/store/QuantityStepper";
+import {
+  StoreButton,
+  storeButtonClasses,
+} from "@/components/store/ui/StoreButton";
 import { buildCartValidationPayload } from "@/lib/cart/contract";
 import {
   ensureCartHydration,
   getCartTotals,
   useCartStore,
 } from "@/lib/cart/store";
+import type {
+  CartValidationResponse,
+  InvalidCartItem,
+} from "@/lib/cart/types";
 import { formatRupiah } from "@/lib/pricing";
 import { getPublicApiUrl } from "@/lib/public-api";
-import { buttonClasses } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { QuantityStepper } from "@/components/store/QuantityStepper";
 
 export function CartView() {
   const items = useCartStore((state) => state.items);
@@ -145,7 +149,7 @@ export function CartView() {
         </p>
 
         <Link
-          className={buttonClasses({
+          className={storeButtonClasses({
             className: "mt-6",
           })}
           href="/products"
@@ -173,27 +177,31 @@ export function CartView() {
             </p>
           </div>
 
-          <button
-            className="min-h-11 rounded-full px-4 text-sm font-semibold text-danger hover:bg-danger-bg"
+          <StoreButton
+            className="w-fit text-[var(--color-error)] hover:bg-[var(--color-error-surface)]"
             onClick={clearCart}
+            size="compact"
             type="button"
+            variant="ghost"
           >
             Kosongkan
-          </button>
+          </StoreButton>
         </div>
 
         {error ? (
           <div className="rounded-[var(--radius-lg)] border border-danger/30 bg-danger-bg p-4 text-sm font-medium text-danger">
             <p>{error}</p>
 
-            <button
-              className="mt-3 min-h-10 rounded-full border border-danger px-4 text-sm font-semibold text-danger hover:bg-surface"
+            <StoreButton
+              className="mt-3"
               disabled={isPending}
               onClick={revalidateCart}
+              size="compact"
               type="button"
+              variant="destructive"
             >
               Coba lagi
-            </button>
+            </StoreButton>
           </div>
         ) : null}
 
@@ -350,17 +358,19 @@ export function CartView() {
                     )}
                   </p>
 
-                  <button
-                    className="min-h-10 rounded-full text-sm font-semibold text-danger hover:underline"
+                  <StoreButton
+                    className="text-[var(--color-error)] hover:bg-[var(--color-error-surface)]"
                     onClick={() =>
                       removeItem(
                         item.variantId,
                       )
                     }
+                    size="compact"
                     type="button"
+                    variant="ghost"
                   >
                     Hapus
-                  </button>
+                  </StoreButton>
                 </div>
               </div>
             </article>
@@ -428,9 +438,9 @@ export function CartView() {
           aria-disabled={
             checkoutDisabled
           }
-          className={buttonClasses({
+          className={storeButtonClasses({
             className: checkoutDisabled
-              ? "mt-5 w-full pointer-events-none bg-surface-muted text-ink-muted"
+              ? "mt-5 w-full pointer-events-none bg-[var(--color-disabled)] text-[var(--color-disabled-text)]"
               : "mt-5 w-full",
             size: "large",
           })}
