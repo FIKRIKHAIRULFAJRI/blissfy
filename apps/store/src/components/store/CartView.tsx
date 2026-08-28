@@ -439,12 +439,15 @@ export function CartView() {
             checkoutDisabled
           }
           className={storeButtonClasses({
-            className: checkoutDisabled
-              ? "mt-5 w-full pointer-events-none bg-[var(--color-disabled)] text-[var(--color-disabled-text)]"
-              : "mt-5 w-full",
+            className: "mt-5 w-full",
             size: "large",
           })}
           href="/checkout"
+          tabIndex={
+            checkoutDisabled
+              ? -1
+              : undefined
+          }
         >
           Lanjut ke checkout
         </Link>

@@ -7,7 +7,8 @@ export type StoreButtonVariant =
   | "secondary"
   | "soft"
   | "ghost"
-  | "destructive";
+  | "destructive"
+  | "inverse";
 
 export type StoreButtonSize = "default" | "large" | "compact";
 
@@ -26,6 +27,9 @@ const variants: Record<StoreButtonVariant, string> = {
 
   destructive:
     "bg-[var(--color-error-surface)] text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error-surface)_85%,var(--color-error))]",
+
+  inverse:
+    "bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-container)]",
 };
 
 const sizes: Record<StoreButtonSize, string> = {
@@ -53,12 +57,17 @@ export function storeButtonClasses({
     "focus-visible:outline-2",
     "focus-visible:outline-offset-3",
     "focus-visible:outline-[var(--color-action-primary)]",
-    "disabled:cursor-not-allowed",
-    "disabled:bg-[var(--color-disabled)]",
-    "disabled:text-[var(--color-disabled-text)]",
-    "disabled:border-[var(--color-border)]",
     variants[variant],
     sizes[size],
+    "disabled:cursor-not-allowed",
+    "disabled:border-[var(--color-border)]",
+    "disabled:bg-[var(--color-disabled)]",
+    "disabled:text-[var(--color-disabled-text)]",
+    "aria-disabled:pointer-events-none",
+    "aria-disabled:cursor-not-allowed",
+    "aria-disabled:border-[var(--color-border)]",
+    "aria-disabled:bg-[var(--color-disabled)]",
+    "aria-disabled:text-[var(--color-disabled-text)]",
     className,
   );
 }
