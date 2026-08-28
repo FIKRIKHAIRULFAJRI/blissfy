@@ -1,36 +1,44 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 
-const footerLinks = [
-  { label: "Kontak", href: "/contact" },
-  { label: "Kebijakan pengiriman", href: "/shipping-policy" },
-  { label: "Kebijakan privasi", href: "/privacy-policy" },
-  { label: "Syarat pembelian", href: "/terms" },
-];
-
 export function StoreFooter() {
   return (
-    <footer className="mt-20 border-t border-border bg-surface">
-      <Container className="grid gap-10 py-10 md:grid-cols-[1.2fr_0.8fr] md:py-14">
-        <div>
-          <Link className="text-2xl font-semibold leading-none" href="/">
-            Blissfy.co
+    <footer className="mt-[var(--space-6)] border-t border-[var(--color-border-strong)] bg-[var(--color-text-brand)] text-[var(--color-action-primary-text)]">
+      <Container className="grid gap-[var(--space-5)] py-[var(--space-5)] md:grid-cols-2 lg:grid-cols-12 lg:gap-[var(--space-4)] lg:py-[var(--space-6)]">
+        <div className="lg:col-span-5">
+          <Link
+            className="text-heading inline-flex min-h-11 items-center text-[var(--color-surface)] transition-colors hover:text-[var(--color-action-primary-text)] focus-visible:outline-[var(--color-surface)]"
+            href="/"
+          >
+            blissfy.co
           </Link>
-          <p className="mt-4 max-w-md text-sm leading-6 text-ink-soft">
-            Toko fashion single-store dengan pengalaman belanja sederhana,
-            jelas, dan terpercaya.
+          <p className="text-body mt-[var(--space-3)] max-w-md text-[var(--color-surface-high)]">
+            Elevating everyday essentials through mindful design and spatial
+            luxury.
           </p>
         </div>
-        <nav
-          aria-label="Tautan footer"
-          className="grid gap-3 text-sm font-medium text-ink-soft sm:grid-cols-2"
+        <section
+          aria-labelledby="footer-social-heading"
+          className="lg:col-span-4 lg:col-start-7"
         >
-          {footerLinks.map((link) => (
-            <Link className="hover:text-ink" href={link.href} key={link.href}>
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+          <h2
+            className="text-label uppercase text-[var(--color-surface-high)]"
+            id="footer-social-heading"
+          >
+            Follow us
+          </h2>
+          <ul className="mt-[var(--space-3)]">
+            <li className="inline-flex min-h-11 items-center text-sm font-medium text-[var(--color-surface)]">
+              Instagram: @blissfy.co
+            </li>
+            <li className="flex min-h-11 items-center text-sm font-medium text-[var(--color-surface)]">
+              TikTok: @blissfy.co
+            </li>
+          </ul>
+        </section>
+        <p className="text-sm leading-6 text-[var(--color-surface-high)] md:col-span-2 lg:col-span-2 lg:col-start-11 lg:row-start-1 lg:justify-self-end lg:text-right">
+          © 2026 blissfy.co. All rights reserved.
+        </p>
       </Container>
     </footer>
   );
