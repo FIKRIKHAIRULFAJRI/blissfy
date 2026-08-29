@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { CartCountBadge } from "@/components/store/CartCountBadge";
 import { Container } from "@/components/ui/Container";
+import { cn } from "@/lib/utils";
 
 const navigation = [
   { label: "Products", href: "/products" },
@@ -14,7 +15,7 @@ const navigation = [
 const utilityLinkClasses =
   "inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-transparent transition-[background-color,box-shadow,transform] duration-[var(--duration-fast)] ease-[var(--ease-blissfy)] hover:bg-[var(--color-canvas)] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-text-brand)] focus-visible:ring-offset-2";
 
-export function StoreHeader() {
+export function StoreHeader({ activePath }: { activePath?: string }) {
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -46,7 +47,11 @@ export function StoreHeader() {
                 >
                   {navigation.map((item) => (
                     <Link
-                      className="flex min-h-11 items-center rounded-[var(--radius-control)] px-4 py-3 text-base font-medium text-ink-soft transition-colors duration-[var(--duration-fast)] ease-[var(--ease-blissfy)] hover:bg-surface-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-action-primary)]"
+                      aria-current={activePath === item.href ? "page" : undefined}
+                      className={cn(
+                        "flex min-h-11 items-center rounded-[var(--radius-control)] px-4 py-3 text-base font-medium text-ink-soft transition-colors duration-[var(--duration-fast)] ease-[var(--ease-blissfy)] hover:bg-surface-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-action-primary)]",
+                        activePath === item.href && "font-semibold text-ink",
+                      )}
                       href={item.href}
                       key={item.href}
                     >
@@ -72,7 +77,12 @@ export function StoreHeader() {
           >
             {navigation.map((item) => (
               <Link
-                className="flex min-h-11 items-center transition-colors duration-[var(--duration-fast)] ease-[var(--ease-blissfy)] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-action-primary)]"
+                aria-current={activePath === item.href ? "page" : undefined}
+                className={cn(
+                  "relative flex min-h-11 items-center transition-colors duration-[var(--duration-fast)] ease-[var(--ease-blissfy)] after:absolute after:inset-x-0 after:bottom-2 after:h-px after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-[var(--duration-fast)] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-action-primary)]",
+                  activePath === item.href &&
+                    "font-semibold text-ink after:scale-x-100",
+                )}
                 href={item.href}
                 key={item.href}
               >

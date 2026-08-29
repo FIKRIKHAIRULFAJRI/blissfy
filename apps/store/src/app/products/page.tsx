@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ProductCard } from "@/components/store/ProductCard";
-import { SectionHeading } from "@/components/store/SectionHeading";
+import { AllProductsCatalog } from "@/components/store/AllProductsCatalog";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { StoreHeader } from "@/components/store/StoreHeader";
 import { storeButtonClasses } from "@/components/store/ui/StoreButton";
+import { Container } from "@/components/ui/Container";
 import { getCatalogProducts } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Katalog Produk | Blissfy.co",
+  title: "All Products | Blissfy.co",
   description:
-    "Jelajahi katalog fashion Blissfy.co dengan harga, diskon, warna, ukuran, dan stok ready stock.",
+    "Discover pieces for Her, Him, and coordinated Couple looks at Blissfy.co.",
 };
 
 export default async function ProductsPage() {
@@ -21,49 +21,67 @@ export default async function ProductsPage() {
 
   return (
     <>
-      <StoreHeader />
+      <StoreHeader activePath="/products" />
 
-      <main className="container-page py-12 md:py-16" id="main-content">
-        <div className="mb-8 flex flex-col gap-6 md:mb-10 md:flex-row md:items-end md:justify-between">
-          <SectionHeading
-            description="Semua produk aktif menampilkan harga integer Rupiah, gambar lokal, warna, dan status ready stock dari database."
-            eyebrow="Katalog"
-            title="Semua produk"
-          />
+      <main className="bg-[var(--color-canvas)]" id="main-content">
+        <Container className="pb-[var(--space-6)] pt-[var(--space-5)] lg:pt-[var(--space-5)]">
+          <nav aria-label="Breadcrumb">
+            <ol className="flex items-center gap-[var(--space-3)] text-sm leading-6 text-[var(--color-text-muted)]">
+              <li>
+                <Link
+                  className="transition-colors duration-[var(--duration-fast)] hover:text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-action-primary)]"
+                  href="/"
+                >
+                  Home
+                </Link>
+              </li>
+              <li aria-hidden className="text-[var(--color-border-strong)]">
+                ›
+              </li>
+              <li aria-current="page" className="text-[var(--color-text-secondary)]">
+                Products
+              </li>
+            </ol>
+          </nav>
 
-          <p className="text-sm font-medium text-ink-muted">
-            {products.length} produk aktif
-          </p>
-        </div>
-
-        {products.length > 0 ? (
-          <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        ) : (
-          <section className="rounded-[var(--radius-xl)] border border-border bg-surface p-8 text-center md:p-12">
-            <h2 className="text-2xl font-semibold text-ink">
-              Katalog belum tersedia
-            </h2>
-
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-ink-soft">
-              Produk aktif akan muncul setelah kategori, produk, gambar, varian,
-              dan stok ready stock tersedia di database.
+          <header className="mt-[var(--space-4)]">
+            <div className="flex flex-wrap items-baseline gap-x-[var(--space-3)] gap-y-[var(--space-2)]">
+              <h1 className="text-display text-[var(--color-text-primary)]">
+                All Products
+              </h1>
+              <p className="text-sm font-normal text-[var(--color-text-muted)] sm:text-base">
+                {products.length} products
+              </p>
+            </div>
+            <p className="mt-[var(--space-2)] text-base leading-7 text-[var(--color-text-muted)] sm:text-lg">
+              Discover pieces for Her, Him, and coordinated Couple looks.
             </p>
+          </header>
 
-            <Link
-              className={storeButtonClasses({
-                className: "mt-6",
-                variant: "secondary",
-              })}
-              href="/"
-            >
-              Kembali ke beranda
-            </Link>
-          </section>
-        )}
+          {products.length > 0 ? (
+            <AllProductsCatalog products={products} />
+          ) : (
+            <section className="mt-[var(--space-5)] border-y border-[var(--color-border)] py-[var(--space-6)] text-center">
+              <h2 className="text-heading text-[var(--color-text-primary)]">
+                The catalog is currently empty
+              </h2>
+
+              <p className="mx-auto mt-[var(--space-3)] max-w-xl text-base leading-7 text-[var(--color-text-muted)]">
+                Products will appear here as soon as they are available.
+              </p>
+
+              <Link
+                className={storeButtonClasses({
+                  className: "mt-[var(--space-4)] rounded-[var(--radius-default)]",
+                  variant: "secondary",
+                })}
+                href="/"
+              >
+                Return home
+              </Link>
+            </section>
+          )}
+        </Container>
       </main>
 
       <StoreFooter />
