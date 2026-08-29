@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import {
+  getOrderedProductImages,
+  getPrimaryProductImage,
+} from "@/lib/product-images";
 import type { ProductDetail } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
@@ -16,19 +20,20 @@ export function ProductGallery({
   primaryImage,
   productName,
 }: ProductGalleryProps) {
-  const galleryImages = useMemo(
-    () =>
-      images.length > 0
-        ? images
-        : [
-            {
-              altText: primaryImage.altText,
-              id: "primary",
-              url: primaryImage.url,
-            },
-          ],
-    [images, primaryImage],
-  );
+  const galleryImages = useMemo(() => {
+    const orderedImages = getOrderedProductImages(images);
+
+    return orderedImages.length > 0
+      ? orderedImages
+      : [
+          getPrimaryProductImage({
+            id: "gallery",
+            images,
+            name: productName,
+            primaryImage,
+          }),
+        ];
+  }, [images, primaryImage, productName]);
   const [activeImageId, setActiveImageId] = useState(galleryImages[0].id);
   const activeImage =
     galleryImages.find((image) => image.id === activeImageId) ?? galleryImages[0];

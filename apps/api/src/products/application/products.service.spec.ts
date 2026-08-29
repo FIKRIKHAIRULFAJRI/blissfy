@@ -56,6 +56,10 @@ describe('ProductsService', () => {
         productId: 'product-1',
         url: '/test.jpg',
         altText: null,
+        publicId: 'blissfy/product-1/front',
+        sortOrder: 0,
+        isPrimary: true,
+        createdAt: new Date('2026-08-30T00:00:00.000Z'),
       },
     ]);
 
@@ -122,9 +126,22 @@ describe('ProductsService', () => {
         salePrice: 200000,
         discountLabel: null,
 
+        images: [
+          {
+            id: 'image-1',
+            url: '/test.jpg',
+            altText: 'Test Product',
+            sortOrder: 0,
+            isPrimary: true,
+          },
+        ],
+
         primaryImage: {
+          id: 'image-1',
           url: '/test.jpg',
           altText: 'Test Product',
+          sortOrder: 0,
+          isPrimary: true,
         },
 
         colors: [
@@ -162,10 +179,24 @@ describe('ProductsService', () => {
 
     productsRepositoryMock.findImages.mockResolvedValue([
       {
+        id: 'image-2',
+        productId: 'product-1',
+        url: '/test-back.jpg',
+        altText: 'Test Product back view',
+        publicId: null,
+        sortOrder: 1,
+        isPrimary: false,
+        createdAt: new Date('2026-08-30T00:01:00.000Z'),
+      },
+      {
         id: 'image-1',
         productId: 'product-1',
         url: '/test.jpg',
         altText: null,
+        publicId: 'blissfy/product-1/front',
+        sortOrder: 0,
+        isPrimary: true,
+        createdAt: new Date('2026-08-30T00:00:00.000Z'),
       },
     ]);
 
@@ -208,8 +239,19 @@ describe('ProductsService', () => {
         id: 'image-1',
         url: '/test.jpg',
         altText: 'Test Product',
+        sortOrder: 0,
+        isPrimary: true,
+      },
+      {
+        id: 'image-2',
+        url: '/test-back.jpg',
+        altText: 'Test Product back view',
+        sortOrder: 1,
+        isPrimary: false,
       },
     ]);
+
+    expect(result?.primaryImage).toEqual(result?.images[0]);
 
     expect(result?.variants).toEqual([
       {
@@ -226,5 +268,79 @@ describe('ProductsService', () => {
 
     expect(result?.totalStock).toBe(7);
     expect(result?.isAvailable).toBe(true);
+  });
+
+  it('should return a stable presentation fallback when a product has no images', async () => {
+    productsRepositoryMock.findActiveProducts.mockResolvedValue([
+      {
+        id: 'product-without-image',
+        slug: 'product-without-image',
+        name: 'Product Without Image',
+        description: 'Fallback test',
+        categoryName: 'Essentials',
+        normalPrice: 100000,
+      },
+    ]);
+    productsRepositoryMock.findImages.mockResolvedValue([]);
+    productsRepositoryMock.findVariants.mockResolvedValue([]);
+    productsRepositoryMock.findDiscounts.mockResolvedValue([]);
+    inventoryServiceMock.getVariantAvailability.mockResolvedValue(new Map());
+
+    const [result] = await service.getCatalogProducts();
+
+    expect(result.images).toEqual([]);
+    expect(result.primaryImage).toEqual({
+      id: 'fallback:product-without-image',
+      url: '/products/placeholder-ivory.svg',
+      altText: 'Product Without Image',
+      sortOrder: 0,
+      isPrimary: true,
+    });
+  });
+
+  it('should use the first ordered image when no image is explicitly primary', async () => {
+    productsRepositoryMock.findActiveProducts.mockResolvedValue([
+      {
+        id: 'product-1',
+        slug: 'test-product',
+        name: 'Test Product',
+        description: 'Ordering test',
+        categoryName: 'Essentials',
+        normalPrice: 100000,
+      },
+    ]);
+    productsRepositoryMock.findImages.mockResolvedValue([
+      {
+        id: 'image-later',
+        productId: 'product-1',
+        url: '/later.jpg',
+        altText: null,
+        publicId: null,
+        sortOrder: 2,
+        isPrimary: false,
+        createdAt: new Date('2026-08-30T00:02:00.000Z'),
+      },
+      {
+        id: 'image-first',
+        productId: 'product-1',
+        url: '/first.jpg',
+        altText: null,
+        publicId: null,
+        sortOrder: 0,
+        isPrimary: false,
+        createdAt: new Date('2026-08-30T00:00:00.000Z'),
+      },
+    ]);
+    productsRepositoryMock.findVariants.mockResolvedValue([]);
+    productsRepositoryMock.findDiscounts.mockResolvedValue([]);
+    inventoryServiceMock.getVariantAvailability.mockResolvedValue(new Map());
+
+    const [result] = await service.getCatalogProducts();
+
+    expect(result.images.map((image) => image.id)).toEqual([
+      'image-first',
+      'image-later',
+    ]);
+    expect(result.primaryImage.id).toBe('image-first');
   });
 });

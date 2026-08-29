@@ -6,7 +6,11 @@ import {
   type DiscountForPricing,
 } from '../domain/product-pricing';
 
-import type { CatalogProduct, ProductDetail } from '../domain/product.types';
+import type {
+  CatalogProduct,
+  ProductDetail,
+  ProductImage,
+} from '../domain/product.types';
 
 import {
   ProductsRepository,
@@ -104,17 +108,10 @@ export class ProductsService {
     product: ProductRow,
     relations: ProductRelations,
   ): ProductDetail {
-    const images = relations.imagesByProduct.get(product.id) ?? [];
     const variants = relations.variantsByProduct.get(product.id) ?? [];
 
     return {
       ...this.mapCatalogProduct(product, relations),
-
-      images: images.map((image) => ({
-        id: image.id,
-        url: image.url,
-        altText: image.altText ?? product.name,
-      })),
 
       variants: variants.map((variant) => ({
         id: variant.id,
@@ -135,7 +132,10 @@ export class ProductsService {
     product: ProductRow,
     relations: ProductRelations,
   ): CatalogProduct {
-    const images = relations.imagesByProduct.get(product.id) ?? [];
+    const images = this.mapProductImages(
+      product,
+      relations.imagesByProduct.get(product.id) ?? [],
+    );
 
     const variants = (relations.variantsByProduct.get(product.id) ?? []).filter(
       (variant) => variant.isActive,
@@ -145,8 +145,6 @@ export class ProductsService {
       relations.discountsByProduct.get(product.id) ?? [];
 
     const price = getPriceSnapshot(product.normalPrice, discounts);
-
-    const image = images[0];
 
     const totalStock = variants.reduce(
       (sum, variant) =>
@@ -165,16 +163,59 @@ export class ProductsService {
       salePrice: price.salePrice,
       discountLabel: price.discountLabel,
 
-      primaryImage: {
-        url: image?.url ?? '/products/placeholder-ivory.svg',
-        altText: image?.altText ?? product.name,
-      },
+      images,
+      primaryImage: this.getPrimaryImage(product, images),
 
       colors: this.uniqueColors(variants),
 
       totalStock,
       isAvailable: totalStock > 0,
     };
+  }
+
+  private mapProductImages(
+    product: ProductRow,
+    rows: ImageRow[],
+  ): ProductImage[] {
+    return [...rows]
+      .sort((left, right) => {
+        if (left.isPrimary !== right.isPrimary) {
+          return left.isPrimary ? -1 : 1;
+        }
+
+        if (left.sortOrder !== right.sortOrder) {
+          return left.sortOrder - right.sortOrder;
+        }
+
+        const createdAtDifference =
+          new Date(left.createdAt).getTime() -
+          new Date(right.createdAt).getTime();
+
+        return createdAtDifference || left.id.localeCompare(right.id);
+      })
+      .map((image) => ({
+        id: image.id,
+        url: image.url,
+        altText: image.altText?.trim() || product.name,
+        sortOrder: image.sortOrder,
+        isPrimary: image.isPrimary,
+      }));
+  }
+
+  private getPrimaryImage(
+    product: ProductRow,
+    images: ProductImage[],
+  ): ProductImage {
+    return (
+      images.find((image) => image.isPrimary) ??
+      images[0] ?? {
+        id: `fallback:${product.id}`,
+        url: '/products/placeholder-ivory.svg',
+        altText: product.name,
+        sortOrder: 0,
+        isPrimary: true,
+      }
+    );
   }
 
   private uniqueColors(variants: VariantRow[]): Array<{

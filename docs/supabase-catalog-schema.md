@@ -54,6 +54,35 @@ Relasi:
 - `product_variants.productId` -> `products.id`
 - `discounts.productId` -> `products.id`
 
+`product_images` menyimpan metadata aset, bukan binary image:
+
+```text
+id
+productId
+url
+publicId nullable
+altText nullable
+sortOrder
+isPrimary
+createdAt
+updatedAt
+```
+
+Migration hardening pipeline:
+
+```text
+supabase/migrations/202608300001_harden_product_image_pipeline.sql
+```
+
+Aturan image pipeline:
+
+- maksimum satu primary image per produk;
+- ordering unik per produk dan deterministik melalui `sortOrder`;
+- image tanpa primary mewarisi image pertama saat migration;
+- `publicId` Cloudinary disimpan internal dan tidak diekspos ke Store API;
+- product tanpa image tetap valid dan memakai fallback presentational saat read;
+- file image tetap berada di Cloudinary, bukan di PostgreSQL.
+
 Constraint utama:
 
 - slug produk unik dan berformat URL-friendly.

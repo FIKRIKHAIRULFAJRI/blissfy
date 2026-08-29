@@ -9,6 +9,7 @@ import { StoreFieldMessage } from "@/components/store/ui/StoreFieldMessage";
 import { ensureCartHydration, useCartStore } from "@/lib/cart/store";
 import { formatRupiah } from "@/lib/pricing";
 import type { ProductDetail } from "@/lib/products";
+import { getPrimaryProductImage } from "@/lib/product-images";
 import { cn } from "@/lib/utils";
 
 type ProductPurchaseFormProps = {
@@ -18,6 +19,7 @@ type ProductPurchaseFormProps = {
 export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
   const addItem = useCartStore((state) => state.addItem);
   const hydrated = useCartStore((state) => state.hydrated);
+  const primaryImage = getPrimaryProductImage(product);
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -118,8 +120,8 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
       variantId: selectedVariant.id,
       slug: product.slug,
       name: product.name,
-      imageUrl: product.primaryImage.url,
-      imageAlt: product.primaryImage.altText,
+      imageUrl: primaryImage.url,
+      imageAlt: primaryImage.altText,
       colorName: selectedVariant.colorName,
       colorHex: selectedVariant.colorHex,
       size: selectedVariant.size,

@@ -16,6 +16,10 @@ export type ImageRow = {
   productId: string;
   url: string;
   altText: string | null;
+  publicId: string | null;
+  sortOrder: number;
+  isPrimary: boolean;
+  createdAt: Date;
 };
 
 export type VariantRow = {
@@ -90,10 +94,19 @@ export class ProductsRepository {
           id::text AS id,
           "productId"::text AS "productId",
           url,
-          "altText"
+          "altText",
+          "publicId",
+          "sortOrder",
+          "isPrimary",
+          "createdAt"
         FROM product_images
         WHERE "productId"::text = ANY($1::text[])
-        ORDER BY "isPrimary" DESC, "sortOrder" ASC
+        ORDER BY
+          "productId" ASC,
+          "isPrimary" DESC,
+          "sortOrder" ASC,
+          "createdAt" ASC,
+          id ASC
       `,
       [productIds],
     );

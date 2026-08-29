@@ -60,7 +60,9 @@ export class CheckoutRepository {
             WHERE "productId" = p.id
             ORDER BY
               "isPrimary" DESC,
-              "sortOrder" ASC
+              "sortOrder" ASC,
+              "createdAt" ASC,
+              id ASC
             LIMIT 1
           ) img ON true
           WHERE v.id::text = ANY($1::text[])

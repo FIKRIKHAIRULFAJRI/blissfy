@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { formatRupiah } from "@/lib/placeholders";
+import { getPrimaryProductImage } from "@/lib/product-images";
 import type { CatalogProduct } from "@/lib/products";
 
 export function AllProductsCard({
@@ -12,6 +13,7 @@ export function AllProductsCard({
   product: CatalogProduct;
 }) {
   const isOnSale = product.salePrice < product.normalPrice;
+  const primaryImage = getPrimaryProductImage(product);
 
   return (
     <article className="group min-w-0">
@@ -21,7 +23,7 @@ export function AllProductsCard({
       >
         <div className="relative aspect-[3/4] overflow-hidden rounded-[var(--radius-default)] bg-[var(--color-surface-container)]">
           <Image
-            alt={product.primaryImage.altText}
+            alt={primaryImage.altText}
             className={
               product.isAvailable
                 ? "object-cover transition-transform duration-[var(--duration-default)] ease-[var(--ease-blissfy)] group-hover:scale-[1.02]"
@@ -30,7 +32,7 @@ export function AllProductsCard({
             fill
             loading={eager ? "eager" : "lazy"}
             sizes="(max-width: 1023px) 50vw, 33vw"
-            src={product.primaryImage.url}
+            src={primaryImage.url}
           />
 
           {isOnSale ? (

@@ -1,3 +1,11 @@
+export type ProductImage = {
+  id: string;
+  url: string;
+  altText: string;
+  sortOrder: number;
+  isPrimary: boolean;
+};
+
 export type CatalogProduct = {
   id: string;
   slug: string;
@@ -7,10 +15,8 @@ export type CatalogProduct = {
   normalPrice: number;
   salePrice: number;
   discountLabel: string | null;
-  primaryImage: {
-    url: string;
-    altText: string;
-  };
+  images: ProductImage[];
+  primaryImage: ProductImage;
   colors: Array<{
     name: string;
     value: string | null;
@@ -20,11 +26,6 @@ export type CatalogProduct = {
 };
 
 export type ProductDetail = CatalogProduct & {
-  images: Array<{
-    id: string;
-    url: string;
-    altText: string;
-  }>;
   variants: Array<{
     id: string;
     sku: string;
