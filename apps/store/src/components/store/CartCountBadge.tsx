@@ -15,12 +15,16 @@ export function CartCountBadge() {
 
   const count = hydrated ? totalItems : 0;
 
+  if (count === 0) {
+    return null;
+  }
+
   return (
     <span
       aria-label={`${count} item di keranjang`}
-      className="grid size-5 place-items-center rounded-full bg-ink text-[11px] text-surface"
+      className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--color-text-brand)] px-1 text-[9px] font-semibold leading-none text-white"
     >
-      {count > 9 ? "9+" : count}
+      {count > 99 ? "99+" : count}
     </span>
   );
 }

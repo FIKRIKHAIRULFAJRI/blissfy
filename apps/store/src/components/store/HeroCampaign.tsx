@@ -1,62 +1,53 @@
+import Image from "next/image";
 import Link from "next/link";
 
-import { Container } from "@/components/ui/Container";
 import { storeButtonClasses } from "@/components/store/ui/StoreButton";
 
-export function HeroCampaign() {
+type HeroCampaignProps = {
+  image: {
+    altText: string;
+    url: string;
+  };
+};
+
+export function HeroCampaign({ image }: HeroCampaignProps) {
   return (
-    <Container as="section" className="pt-6">
-      <div className="relative isolate min-h-[620px] overflow-hidden rounded-[var(--radius-xl)] bg-olive text-surface md:min-h-[700px] lg:min-h-[720px]">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-ink/50"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-4 rounded-[1.4rem] border border-surface/20"
-        />
-        <div
-          aria-hidden
-          className="absolute bottom-0 right-0 h-[68%] w-[72%] rounded-tl-[8rem] bg-surface/18 md:h-[78%] md:w-[56%]"
-        />
-        <div
-          aria-hidden
-          className="absolute bottom-0 right-[8%] h-[76%] w-[34%] rounded-t-full bg-surface/28"
-        />
-        <div
-          aria-hidden
-          className="absolute bottom-0 right-[18%] h-[48%] w-[34%] rounded-t-[5rem] bg-ink/18"
-        />
+    <section
+      aria-labelledby="homepage-hero-heading"
+      className="relative isolate flex h-[clamp(560px,57vw,819px)] items-center justify-center overflow-hidden bg-[var(--color-text-brand)] text-center text-white"
+    >
+      <Image
+        alt={image.altText}
+        className="-z-20 object-cover"
+        fill
+        priority
+        sizes="100vw"
+        src={image.url}
+      />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-black/30" />
 
-        <div className="relative z-10 flex min-h-[620px] flex-col justify-between p-6 md:min-h-[700px] md:p-10 lg:min-h-[720px] lg:p-12">
-          <div className="max-w-md">
-            <p className="text-sm font-semibold uppercase leading-tight text-surface/85">
-              Koleksi esensial Blissfy.co
-            </p>
-
-            <p className="mt-4 text-base leading-7 text-surface/80">
-              Pilihan esensial untuk bergerak dengan percaya diri setiap hari.
-            </p>
-          </div>
-
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
-            <Link
-              className={storeButtonClasses({
-                className: "w-fit",
-                size: "large",
-                variant: "inverse",
-              })}
-              href="#koleksi"
-            >
-              Belanja sekarang
-            </Link>
-
-            <h1 className="text-display-xl max-w-4xl text-balance">
-              Temukan nyaman dalam setiap gaya.
-            </h1>
-          </div>
-        </div>
+      <div className="mx-auto flex max-w-3xl flex-col items-center px-[var(--page-margin-mobile)]">
+        <h1
+          className="text-display text-balance text-white"
+          id="homepage-hero-heading"
+        >
+          Shared or solo, still Blissfy
+        </h1>
+        <p className="text-body mt-[var(--space-3)] max-w-2xl text-balance text-white/90">
+          Curated simplicity for the discerning individual. Discover our latest
+          collection of modern minimalist essentials.
+        </p>
+        <Link
+          className={storeButtonClasses({
+            className:
+              "mt-[var(--space-4)] rounded-[var(--radius-full)] px-[var(--space-4)] text-label !text-[var(--color-action-primary-text)] uppercase tracking-[var(--tracking-label)]",
+            size: "compact",
+          })}
+          href="/products"
+        >
+          Shop Now
+        </Link>
       </div>
-    </Container>
+    </section>
   );
 }

@@ -1,15 +1,18 @@
 import Link from "next/link";
 
 import { CartCountBadge } from "@/components/store/CartCountBadge";
-import { storeButtonClasses } from "@/components/store/ui/StoreButton";
 import { Container } from "@/components/ui/Container";
 
 const navigation = [
-  { label: "Koleksi", href: "#koleksi" },
-  { label: "Produk", href: "/products" },
-  { label: "Tentang", href: "/about" },
-  { label: "Lacak pesanan", href: "/order/track" },
+  { label: "Products", href: "/products" },
+  { label: "About", href: "/about" },
+  { label: "Track Order", href: "/order/track" },
+  { label: "Contact", href: "/contact" },
+  { label: "Privacy", href: "/privacy" },
 ];
+
+const utilityLinkClasses =
+  "inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-transparent transition-[background-color,box-shadow,transform] duration-[var(--duration-fast)] ease-[var(--ease-blissfy)] hover:bg-[var(--color-canvas)] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-text-brand)] focus-visible:ring-offset-2";
 
 export function StoreHeader() {
   return (
@@ -18,15 +21,8 @@ export function StoreHeader() {
         Lewati ke konten
       </a>
 
-      <div className="bg-ink text-surface">
-        <Container className="flex min-h-9 items-center justify-center py-2 text-center text-xs font-medium leading-5">
-          Belanja fashion Blissfy.co tanpa akun dengan pembayaran dan
-          pengiriman yang jelas.
-        </Container>
-      </div>
-
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
-        <Container className="flex h-16 items-center justify-between gap-2 sm:gap-4 lg:h-20">
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur">
+        <Container className="flex h-16 items-center justify-between gap-[var(--space-2)] lg:grid lg:h-20 lg:grid-cols-[1fr_auto_1fr]">
           <details className="group lg:hidden">
             <summary
               aria-label="Buka navigasi"
@@ -64,15 +60,15 @@ export function StoreHeader() {
 
           <Link
             aria-label="Blissfy.co beranda"
-            className="shrink-0 text-xl font-semibold leading-none tracking-[-0.01em] text-ink sm:text-2xl"
+            className="shrink-0 text-lg font-semibold leading-none tracking-[-0.01em] text-[var(--color-text-primary)] sm:text-xl"
             href="/"
           >
-            Blissfy.co
+            blissfy.co
           </Link>
 
           <nav
             aria-label="Navigasi utama"
-            className="hidden items-center gap-8 text-sm font-medium text-ink-soft lg:flex"
+            className="hidden items-center gap-[var(--space-4)] text-sm font-normal text-[var(--color-text-secondary)] lg:flex"
           >
             {navigation.map((item) => (
               <Link
@@ -85,30 +81,26 @@ export function StoreHeader() {
             ))}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <div className="flex shrink-0 items-center justify-self-end">
             <Link
               aria-label="Cari produk"
-              className={storeButtonClasses({
-                className: "min-w-11 px-0",
-                size: "compact",
-                variant: "ghost",
-              })}
+              className={utilityLinkClasses}
               href="/products"
+              style={{ color: "var(--color-text-brand)" }}
             >
               <SearchIcon />
             </Link>
 
             <Link
               aria-label="Buka keranjang"
-              className={storeButtonClasses({
-                className: "relative min-w-11 px-0",
-                size: "compact",
-                variant: "secondary",
-              })}
+              className={utilityLinkClasses}
               href="/cart"
+              style={{ color: "var(--color-text-brand)" }}
             >
-              <BagIcon />
-              <CartCountBadge />
+              <span className="relative inline-flex">
+                <BagIcon />
+                <CartCountBadge />
+              </span>
             </Link>
           </div>
         </Container>
