@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { QuantityStepper } from "@/components/store/QuantityStepper";
 import { StoreButton } from "@/components/store/ui/StoreButton";
 import { StoreFieldMessage } from "@/components/store/ui/StoreFieldMessage";
@@ -17,6 +18,7 @@ type ProductPurchaseFormProps = {
 };
 
 export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
+  const router = useRouter();
   const addItem = useCartStore((state) => state.addItem);
   const hydrated = useCartStore((state) => state.hydrated);
   const primaryImage = getPrimaryProductImage(product);
@@ -25,6 +27,7 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isBuyNowPending, startBuyNowTransition] = useTransition();
 
   useEffect(() => {
     ensureCartHydration();
@@ -97,22 +100,22 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
     setMessage(null);
   }
 
-  function handleAddToCart() {
+  function addSelectedItemToCart() {
     if (!selectedColor || !selectedSize) {
       setError("Pilih warna dan ukuran sebelum menambahkan ke keranjang.");
-      return;
+      return false;
     }
 
     if (!selectedVariant || !selectedVariantAvailable) {
       setError("Varian ini tidak tersedia untuk dibeli.");
-      return;
+      return false;
     }
 
     if (!product.id || !selectedVariant.id) {
       setError(
         "Data produk belum lengkap. Muat ulang halaman lalu pilih varian lagi.",
       );
-      return;
+      return false;
     }
 
     addItem({
@@ -133,7 +136,26 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
       stock: selectedVariant.stock,
     });
     setError(null);
+    return true;
+  }
+
+  function handleAddToCart() {
+    if (!addSelectedItemToCart()) {
+      return;
+    }
+
     setMessage("Produk ditambahkan ke keranjang.");
+  }
+
+  function handleBuyNow() {
+    if (!addSelectedItemToCart()) {
+      return;
+    }
+
+    setMessage(null);
+    startBuyNowTransition(() => {
+      router.push("/checkout");
+    });
   }
 
   return (
@@ -274,7 +296,7 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
           role="alert"
           variant="error"
         >
-            {error}
+          {error}
         </StoreFieldMessage>
       ) : null}
       {message ? (
@@ -290,13 +312,24 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
       ) : null}
 
       <StoreButton
-        className="mt-8 w-full rounded-[5px] border border-[#2C2C2A] bg-[#2C2C2A] uppercase tracking-[0.08em] text-white hover:bg-black focus-visible:outline-black"
-        disabled={!hydrated || !selectedVariantAvailable}
+        className="mt-8 w-full rounded-[5px] border border-[#2C2C2A] bg-[#2C2C2A] uppercase tracking-[0.08em] text-white hover:bg-black focus-visible:outline-black disabled:border-[#2C2C2A] disabled:bg-[#2C2C2A] disabled:text-white"
+        disabled={!hydrated || isBuyNowPending}
         onClick={handleAddToCart}
         size="large"
         type="button"
       >
         {!hydrated ? "Menyiapkan keranjang..." : "Add to Bag"}
+      </StoreButton>
+
+      <StoreButton
+        className="mt-3 w-full rounded-[5px] border-[#2C2C2A] !bg-white uppercase tracking-[0.08em] text-[#2C2C2A] hover:!bg-[#F3EFE9] hover:text-[#2C2C2A] focus-visible:outline-black disabled:border-[#2C2C2A] disabled:!bg-white disabled:text-[#2C2C2A]"
+        disabled={!hydrated || isBuyNowPending}
+        onClick={handleBuyNow}
+        size="large"
+        type="button"
+        variant="secondary"
+      >
+        {isBuyNowPending ? "Mengarahkan ke checkout..." : "Buy Now"}
       </StoreButton>
 
       <div className="mt-12 border-b border-black/10">
