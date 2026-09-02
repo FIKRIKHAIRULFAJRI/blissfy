@@ -12,11 +12,12 @@ export default function ProductDetailError({
 }) {
   return (
     <>
-      <StoreHeader />
+      <StoreHeader activePath="/products" variant="editorial" />
 
-      <main className="container-page py-12 md:py-16" id="main-content">
-        <section className="rounded-[var(--radius-xl)] border border-danger/30 bg-danger-bg p-8 text-center md:p-12">
-          <h1 className="text-2xl font-semibold text-danger">
+      <main className="bg-bone" id="main-content">
+        <section className="container-page max-w-[1200px] py-[72px] text-center md:py-24">
+          <div className="rounded-[5px] border border-danger/30 bg-paper-white p-8 md:p-12">
+          <h1 className="font-goudy-old-style text-[32px] font-normal leading-[1.08] text-danger md:text-[40px]">
             Detail produk belum dapat dimuat
           </h1>
 
@@ -26,16 +27,19 @@ export default function ProductDetailError({
           </p>
 
           <StoreButton
-            className="mt-6"
+            className="mt-6 rounded-[5px]"
             onClick={reset}
             variant="secondary"
           >
             Coba lagi
           </StoreButton>
+          </div>
         </section>
       </main>
 
-      <StoreFooter />
+      <div className="flow-root bg-bone">
+        <StoreFooter variant="editorial" />
+      </div>
     </>
   );
 }

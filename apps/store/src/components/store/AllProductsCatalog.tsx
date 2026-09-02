@@ -46,23 +46,23 @@ export function AllProductsCatalog({
   }
 
   return (
-    <div className="mt-[var(--space-5)] grid gap-[var(--space-5)] lg:grid-cols-[240px_minmax(0,1fr)]">
+    <div className="mt-[30px] lg:mt-12 lg:grid lg:grid-cols-[190px_minmax(0,1fr)] lg:gap-12">
       <aside aria-label="Product filters" className="hidden min-w-0 lg:block">
-        <FilterContent className="grid gap-[var(--space-5)]" />
+        <FilterContent className="grid gap-[42px]" />
       </aside>
 
       <section aria-label="Product catalog" className="min-w-0">
-        <div className="flex flex-col gap-[var(--space-3)] lg:flex-row lg:items-center lg:justify-between">
-          <label className="relative block w-full lg:max-w-[288px]">
+        <div className="lg:flex lg:items-center lg:justify-between lg:gap-6">
+          <label className="relative block w-full lg:max-w-[340px]">
             <span className="sr-only">Search apparel</span>
             <span
               aria-hidden
-              className="pointer-events-none absolute left-[var(--space-3)] top-1/2 z-10 -translate-y-1/2 text-[var(--color-text-muted)]"
+              className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-stone"
             >
               <SearchIcon />
             </span>
             <StoreInput
-              className="rounded-[var(--radius-default)] pl-12"
+              className="min-h-[52px] rounded-[5px] border-black/10 bg-paper-white pl-12 text-sm text-black shadow-none hover:border-ash focus:border-black focus-visible:outline-black"
               onChange={(event) => handleSearch(event.target.value)}
               placeholder="Search apparel..."
               type="search"
@@ -75,14 +75,13 @@ export function AllProductsCatalog({
           </div>
         </div>
 
-        <div className="mt-[var(--space-3)] flex flex-wrap items-center justify-between gap-x-[var(--space-3)] gap-y-[var(--space-2)] lg:hidden">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 lg:hidden">
           <StoreButton
             aria-controls="mobile-product-filters"
             aria-expanded={filtersOpen}
-            className="rounded-[var(--radius-default)] border border-[var(--color-border)] px-3 active:scale-[0.98]"
+            className="min-h-11 rounded-[5px] border border-black/10 bg-paper-white font-medium text-black shadow-none hover:border-ash hover:bg-[#f8f7f4] focus-visible:outline-black active:scale-[0.98]"
             onClick={() => setFiltersOpen((isOpen) => !isOpen)}
             size="compact"
-            style={{ color: "var(--color-text-brand)" }}
             variant="inverse"
           >
             <FilterIcon />
@@ -94,11 +93,11 @@ export function AllProductsCatalog({
 
         <aside
           aria-label="Mobile product filters"
-          className="mt-[var(--space-3)] rounded-[var(--radius-default)] border border-[var(--color-border)] bg-[var(--color-surface)]/55 p-[var(--space-3)] lg:hidden"
+          className="mt-[18px] rounded-[5px] border border-black/10 bg-paper-white p-6 lg:hidden"
           hidden={!filtersOpen}
           id="mobile-product-filters"
         >
-          <FilterContent className="grid grid-cols-2 gap-[var(--space-4)]" />
+          <FilterContent className="grid grid-cols-1 gap-[30px] sm:grid-cols-2 sm:gap-8" />
         </aside>
 
         <p aria-live="polite" className="sr-only">
@@ -106,7 +105,7 @@ export function AllProductsCatalog({
         </p>
 
         {visibleProducts.length > 0 ? (
-          <div className="mt-[var(--space-4)] grid grid-cols-2 gap-x-[var(--space-3)] gap-y-[var(--space-5)] sm:gap-x-[var(--space-4)] lg:mt-[var(--space-5)] lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-[30px] sm:mt-[30px] sm:gap-x-4 sm:gap-y-9 lg:mt-8 lg:grid-cols-3 lg:gap-x-[18px] lg:gap-y-12">
             {visibleProducts.map((product, index) => (
               <AllProductsCard
                 eager={index < 3}
@@ -116,29 +115,25 @@ export function AllProductsCatalog({
             ))}
           </div>
         ) : (
-          <div className="mt-[var(--space-5)] border-y border-[var(--color-border)] py-[var(--space-6)] text-center">
-            <h2 className="text-heading text-[var(--color-text-primary)]">
+          <div className="mt-12 border-y border-black/10 px-6 py-[72px] text-center">
+            <h2 className="font-goudy-old-style text-[32px] font-normal leading-[1.08] tracking-[-0.012em]">
               No products found
             </h2>
-            <p className="mx-auto mt-[var(--space-3)] max-w-lg text-base text-[var(--color-text-muted)]">
+            <p className="mx-auto mt-[18px] max-w-[540px] text-sm leading-[1.6] text-stone">
               Try another product name or category.
             </p>
           </div>
         )}
 
         {hasMoreProducts ? (
-          <div className="mt-[var(--space-6)] flex justify-center">
+          <div className="mt-[54px] flex justify-center md:mt-[72px]">
             <StoreButton
-              className="min-w-56 rounded-[var(--radius-default)] px-[var(--space-5)]"
+              className="min-h-12 min-w-[184px] rounded-[5px] border border-cocoa bg-cocoa text-[13px] font-medium leading-none text-white shadow-none hover:bg-black focus-visible:outline-black"
               onClick={() =>
                 setVisibleCount((count) => count + LOAD_MORE_COUNT)
               }
             >
-              <span className="leading-5">
-                Load
-                <br />
-                More
-              </span>
+              Load More
             </StoreButton>
           </div>
         ) : null}
@@ -151,11 +146,11 @@ function FilterContent({ className }: { className?: string }) {
   return (
     <div className={cn(className)}>
       <nav aria-label="Shop by audience">
-        <h2 className="text-lg font-medium leading-7 text-[var(--color-text-secondary)]">
+        <h2 className="font-goudy-old-style text-2xl font-normal leading-[1.08] tracking-[-0.012em] text-black">
           Shop By
         </h2>
-        <ul className="mt-[var(--space-3)] space-y-[var(--space-2)] text-base leading-6 text-[var(--color-text-secondary)]">
-          <li className="font-semibold text-[var(--color-text-primary)]">
+        <ul className="mt-[18px] grid gap-[9px] text-sm leading-normal text-stone">
+          <li className="text-black underline underline-offset-4">
             All Products
           </li>
           {audienceLabels.map((label) => (
@@ -165,13 +160,13 @@ function FilterContent({ className }: { className?: string }) {
       </nav>
 
       <fieldset disabled>
-        <legend className="text-lg font-medium leading-7 text-[var(--color-text-secondary)]">
+        <legend className="font-goudy-old-style text-2xl font-normal leading-[1.08] tracking-[-0.012em] text-black">
           Category
         </legend>
-        <div className="mt-[var(--space-3)] space-y-[var(--space-2)]">
+        <div className="mt-[18px] grid gap-[9px] text-sm leading-normal text-stone">
           {audienceLabels.map((label) => (
             <label
-              className="flex min-h-8 items-center gap-[var(--space-3)] text-base leading-6 text-[var(--color-text-secondary)]"
+              className="flex min-h-[30px] items-center gap-3"
               key={label}
             >
               <StoreCheckbox className="size-4 rounded-[var(--radius-sm)] disabled:border-[var(--color-border)] disabled:bg-[var(--color-surface)]" />
@@ -190,30 +185,30 @@ function FilterContent({ className }: { className?: string }) {
 
 function CatalogControls() {
   return (
-    <div className="flex min-h-12 items-center justify-end gap-[var(--space-2)] text-sm text-[var(--color-text-muted)] sm:gap-[var(--space-4)]">
+    <div className="flex min-h-12 items-center justify-end gap-2.5 text-xs text-stone sm:gap-[18px] sm:text-[13px]">
       <div
         aria-label="Sort order: Newest"
-        className="flex items-center gap-[var(--space-2)] sm:gap-[var(--space-3)]"
+        className="flex items-center gap-1.5 sm:gap-2.5"
       >
         <span>Sort by:</span>
-        <span className="font-medium text-[var(--color-text-secondary)]">
+        <span className="text-black">
           Newest
         </span>
         <CaretDownIcon />
       </div>
 
-      <span aria-hidden className="h-8 w-px bg-[var(--color-border)]" />
+      <span aria-hidden className="hidden h-7 w-px bg-black/10 sm:block" />
 
       <div
         aria-label="Product view"
-        className="flex items-center gap-[var(--space-2)]"
+        className="hidden items-center gap-[9px] sm:flex"
       >
-        <span aria-label="Grid view selected" role="img">
+        <span aria-label="Grid view selected" className="text-black" role="img">
           <GridIcon />
         </span>
         <span
           aria-label="List view unavailable"
-          className="text-[var(--color-text-muted)]"
+          className="text-ash"
           role="img"
         >
           <ListIcon />
@@ -255,7 +250,7 @@ function CaretDownIcon() {
 
 function GridIcon() {
   return (
-    <svg aria-hidden className="size-5 text-[var(--color-text-brand)]" fill="none" viewBox="0 0 20 20">
+    <svg aria-hidden className="size-5" fill="none" viewBox="0 0 20 20">
       <rect height="5" rx="0.75" stroke="currentColor" strokeWidth="1.5" width="5" x="2" y="2" />
       <rect height="5" rx="0.75" stroke="currentColor" strokeWidth="1.5" width="5" x="13" y="2" />
       <rect height="5" rx="0.75" stroke="currentColor" strokeWidth="1.5" width="5" x="2" y="13" />

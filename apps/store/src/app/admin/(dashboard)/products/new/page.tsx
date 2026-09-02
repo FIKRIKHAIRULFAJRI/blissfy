@@ -91,17 +91,19 @@ export default async function NewProductPage({
                 required
                 type="number"
               />
-              <Field
-                label="URL gambar utama"
-                name="imageUrl"
-                placeholder="/products/placeholder-ivory.svg"
-              />
-              <Field label="Alt text gambar" name="imageAlt" />
               <label className="flex min-h-12 items-center gap-2 rounded-[var(--radius-md)] border border-border px-4 text-sm font-semibold text-ink">
                 <input defaultChecked name="isActive" type="checkbox" />
                 Produk aktif
               </label>
             </div>
+          </section>
+
+          <section className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+            <h2 className="text-xl font-semibold text-ink">Product Images</h2>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">
+              Simpan produk terlebih dahulu. Setelah ID produk dibuat, Anda akan
+              diarahkan ke halaman edit untuk mengunggah gambar ke Cloudinary.
+            </p>
           </section>
 
           <section className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">

@@ -137,25 +137,25 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
   }
 
   return (
-    <section className="md:pt-[var(--space-4)] lg:sticky lg:top-28 lg:self-start">
-      <p className="text-label uppercase text-[var(--color-text-muted)]">
+    <section className="lg:sticky lg:top-28 lg:self-start lg:pt-4">
+      <p className="text-[11px] font-medium uppercase leading-none tracking-[0.1em] text-stone">
         {product.categoryName}
       </p>
-      <h1 className="text-display mt-[var(--space-3)] text-[var(--color-text-primary)]">
+      <h1 className="mt-3 max-w-[560px] font-goudy-old-style text-[40px] font-normal leading-[1.02] tracking-[-0.02em] text-black sm:text-5xl">
         {product.name}
       </h1>
 
-      <div className="mt-[var(--space-4)] flex flex-wrap items-baseline gap-[var(--space-3)]">
-        <p className="text-body-lg font-medium text-[var(--color-text-primary)]">
+      <div className="mt-5 flex flex-wrap items-baseline gap-3">
+        <p className="text-lg font-normal text-black">
           {formatRupiah(product.salePrice)}
         </p>
         {product.salePrice < product.normalPrice ? (
           <>
-            <p className="text-sm font-medium text-[var(--color-text-muted)] line-through">
+            <p className="text-sm font-normal text-stone line-through">
               {formatRupiah(product.normalPrice)}
             </p>
             {product.discountLabel ? (
-              <p className="text-label uppercase text-[var(--color-text-muted)]">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-stone">
                 {product.discountLabel}
               </p>
             ) : null}
@@ -163,12 +163,12 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
         ) : null}
       </div>
 
-      <div className="mt-[var(--space-5)] space-y-[var(--space-5)]">
+      <div className="mt-12 space-y-10">
         <fieldset>
-          <legend className="text-label uppercase text-[var(--color-text-secondary)]">
+          <legend className="text-[11px] font-medium uppercase tracking-[0.1em] text-black">
             Warna: {selectedColor || "Pilih warna"}
           </legend>
-          <div className="mt-[var(--space-3)] flex flex-wrap gap-[var(--space-3)]">
+          <div className="mt-4 flex flex-wrap gap-3">
             {colors.map((color) => {
               const disabled = !hasAvailableColor(color.name);
               const selected = selectedColor === color.name;
@@ -180,10 +180,10 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
                   className={cn(
                     "relative grid size-11 place-items-center rounded-full transition-[opacity,box-shadow]",
                     selected
-                      ? "ring-1 ring-[var(--color-text-brand)] ring-offset-4 ring-offset-[var(--color-canvas)]"
-                      : "hover:ring-1 hover:ring-[var(--color-border-strong)] hover:ring-offset-2 hover:ring-offset-[var(--color-canvas)]",
+                      ? "ring-1 ring-black ring-offset-4 ring-offset-bone"
+                      : "hover:ring-1 hover:ring-ash hover:ring-offset-2 hover:ring-offset-bone",
                     disabled &&
-                      "opacity-45 after:absolute after:left-2 after:right-2 after:top-1/2 after:h-px after:-rotate-45 after:bg-[var(--color-text-muted)]",
+                      "opacity-45 after:absolute after:left-2 after:right-2 after:top-1/2 after:h-px after:-rotate-45 after:bg-stone",
                   )}
                   disabled={disabled}
                   key={color.name}
@@ -192,7 +192,7 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
                 >
                   <span
                     aria-hidden
-                    className="size-8 rounded-full border border-[var(--color-border-strong)]"
+                    className="size-8 rounded-full border border-ash"
                     style={{
                       backgroundColor: color.value ?? "var(--color-surface)",
                     }}
@@ -204,10 +204,10 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
         </fieldset>
 
         <fieldset>
-          <legend className="text-label uppercase text-[var(--color-text-secondary)]">
+          <legend className="text-[11px] font-medium uppercase tracking-[0.1em] text-black">
             Ukuran
           </legend>
-          <div className="mt-[var(--space-3)] grid grid-cols-3 gap-[var(--space-3)] sm:grid-cols-5">
+          <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-5">
             {sizes.map((size) => {
               const disabled = !hasAvailableSize(size);
               const selected = selectedSize === size;
@@ -216,12 +216,12 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
                 <button
                   aria-pressed={selected}
                   className={cn(
-                    "relative grid min-h-11 min-w-11 place-items-center rounded-[var(--radius-sm)] border px-[var(--space-2)] text-sm font-medium transition-colors",
+                    "relative grid min-h-11 min-w-11 place-items-center rounded-[5px] border px-2 text-sm font-medium transition-colors",
                     selected
-                      ? "border-[var(--color-text-brand)] bg-[var(--color-text-brand)] text-[var(--color-action-primary-text)]"
-                      : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]",
+                      ? "border-[#2C2C2A] bg-[#2C2C2A] text-white"
+                      : "border-black/15 bg-paper-white text-black hover:border-black",
                     disabled &&
-                      "border-[var(--color-border)] bg-[var(--color-surface-container)] text-[var(--color-text-muted)] after:absolute after:left-3 after:right-3 after:top-1/2 after:h-px after:-rotate-12 after:bg-[var(--color-text-muted)]",
+                      "border-black/10 bg-black/5 text-stone after:absolute after:left-3 after:right-3 after:top-1/2 after:h-px after:-rotate-12 after:bg-stone",
                   )}
                   disabled={disabled}
                   key={size}
@@ -235,12 +235,12 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
           </div>
         </fieldset>
 
-        <div className="flex items-end justify-between gap-[var(--space-4)]">
+        <div className="flex items-end justify-between gap-6 border-y border-black/10 py-6">
           <div>
-            <p className="text-label uppercase text-[var(--color-text-secondary)]">
+            <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black">
               {selectedVariantAvailable ? "Stok tersedia" : "Ketersediaan"}
             </p>
-            <p className="mt-[var(--space-2)] text-sm text-[var(--color-text-muted)]">
+            <p className="mt-2 max-w-[260px] text-sm leading-normal text-stone">
               {selectedVariantAvailable
                 ? `${selectedVariant!.stock} item`
                 : selectedColor && selectedSize
@@ -250,12 +250,12 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
           </div>
           <div className="shrink-0">
             <label
-              className="text-label block text-right uppercase text-[var(--color-text-secondary)]"
+              className="block text-right text-[11px] font-medium uppercase tracking-[0.1em] text-black"
               htmlFor="product-quantity"
             >
               Jumlah
             </label>
-            <div className="mt-[var(--space-2)]">
+            <div className="mt-2">
               <QuantityStepper
                 disabled={!selectedVariantAvailable}
                 id="product-quantity"
@@ -270,7 +270,7 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
 
       {error ? (
         <StoreFieldMessage
-          className="mt-[var(--space-4)] block rounded-[var(--radius-default)] bg-[var(--color-error-surface)] p-[var(--space-3)]"
+          className="mt-6 block rounded-[5px] bg-[var(--color-error-surface)] p-4"
           role="alert"
           variant="error"
         >
@@ -279,7 +279,7 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
       ) : null}
       {message ? (
         <div
-          className="mt-[var(--space-4)] rounded-[var(--radius-default)] bg-[var(--color-surface-container)] p-[var(--space-3)] text-sm font-medium text-[var(--color-text-secondary)]"
+          className="mt-6 rounded-[5px] border border-black/10 bg-paper-white p-4 text-sm font-medium text-stone"
           role="status"
         >
           {message}{" "}
@@ -290,16 +290,16 @@ export function ProductPurchaseForm({ product }: ProductPurchaseFormProps) {
       ) : null}
 
       <StoreButton
-        className="mt-[var(--space-5)] w-full !rounded-[var(--radius-sm)] uppercase tracking-[0.05em]"
+        className="mt-8 w-full rounded-[5px] border border-[#2C2C2A] bg-[#2C2C2A] uppercase tracking-[0.08em] text-white hover:bg-black focus-visible:outline-black"
         disabled={!hydrated || !selectedVariantAvailable}
         onClick={handleAddToCart}
         size="large"
         type="button"
       >
-        {!hydrated ? "Menyiapkan keranjang..." : "Tambah ke keranjang"}
+        {!hydrated ? "Menyiapkan keranjang..." : "Add to Bag"}
       </StoreButton>
 
-      <div className="mt-[var(--space-5)] border-b border-[var(--color-border)]">
+      <div className="mt-12 border-b border-black/10">
         <ProductAccordion title="Detail produk">
           <p>{product.description}</p>
         </ProductAccordion>
@@ -324,12 +324,12 @@ function ProductAccordion({
   title: string;
 }) {
   return (
-    <details className="group border-t border-[var(--color-border)]">
-      <summary className="text-body flex cursor-pointer list-none items-center justify-between gap-[var(--space-3)] py-[var(--space-3)] font-medium text-[var(--color-text-primary)] [&::-webkit-details-marker]:hidden">
+    <details className="group border-t border-black/10">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-[18px] text-base font-normal text-black [&::-webkit-details-marker]:hidden">
         {title}
         <svg
           aria-hidden
-          className="size-5 shrink-0 transition-transform duration-[var(--duration-default)] group-open:rotate-180"
+          className="size-5 shrink-0 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
           fill="none"
           viewBox="0 0 24 24"
         >
@@ -342,7 +342,7 @@ function ProductAccordion({
           />
         </svg>
       </summary>
-      <div className="text-body pb-[var(--space-4)] pr-[var(--space-5)] text-[var(--color-text-secondary)]">
+      <div className="pb-6 pr-8 text-sm leading-[1.6] text-stone">
         {children}
       </div>
     </details>

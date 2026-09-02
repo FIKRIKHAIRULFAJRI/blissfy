@@ -54,9 +54,14 @@ export async function destroyAdminSession() {
   });
 }
 
-export async function getAdminSession() {
+export async function getAdminSessionToken() {
   const cookieStore = await cookies();
-  const session = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
+
+  return cookieStore.get(ADMIN_SESSION_COOKIE)?.value ?? null;
+}
+
+export async function getAdminSession() {
+  const session = await getAdminSessionToken();
 
   if (!session) {
     return null;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminNotice } from "@/components/admin/AdminNotice";
+import { ProductImagesManager } from "@/components/admin/ProductImagesManager";
 import { buttonClasses } from "@/components/ui/button";
 import {
   createDiscount,
@@ -47,6 +48,8 @@ type ImageRow = {
   id: string;
   url: string;
   altText: string | null;
+  sortOrder: number;
+  isPrimary: boolean;
 };
 
 type VariantRow = {
@@ -108,10 +111,10 @@ export default async function ProductEditPage({
     ),
     db.query<ImageRow>(
       `
-        SELECT id::text, url, "altText"
+        SELECT id::text, url, "altText", "sortOrder", "isPrimary"
         FROM product_images
         WHERE "productId"::text = $1
-        ORDER BY "isPrimary" DESC, "sortOrder" ASC
+        ORDER BY "sortOrder" ASC, "createdAt" ASC, id ASC
       `,
       [id],
     ),
@@ -158,7 +161,6 @@ export default async function ProductEditPage({
     notFound();
   }
 
-  const primaryImage = images[0];
   const totalStock = variants.reduce(
     (sum, variant) => sum + variant.stock,
     0,
@@ -198,7 +200,7 @@ export default async function ProductEditPage({
           <div>
             <h2 className="text-xl font-semibold text-ink">Info produk</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Harga, slug, kategori, gambar utama, dan status storefront.
+              Harga, slug, kategori, dan status storefront.
             </p>
           </div>
           <span
@@ -248,16 +250,6 @@ export default async function ProductEditPage({
             required
             type="number"
           />
-          <Field
-            defaultValue={primaryImage?.url ?? "/products/placeholder-ivory.svg"}
-            label="URL gambar utama"
-            name="imageUrl"
-          />
-          <Field
-            defaultValue={primaryImage?.altText ?? product.name}
-            label="Alt text gambar"
-            name="imageAlt"
-          />
           <label className="flex min-h-12 items-center gap-2 rounded-[var(--radius-md)] border border-border px-4 text-sm font-semibold text-ink">
             <input
               defaultChecked={product.isActive}
@@ -276,6 +268,15 @@ export default async function ProductEditPage({
           Simpan perubahan produk
         </button>
       </form>
+
+      <ProductImagesManager
+        initialImages={images.map((image) => ({
+          ...image,
+          altText: image.altText ?? product.name,
+        }))}
+        productId={product.id}
+        productName={product.name}
+      />
 
       <section className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
         <h2 className="text-xl font-semibold text-ink">Varian produk</h2>

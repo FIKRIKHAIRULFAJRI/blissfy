@@ -5,9 +5,6 @@ import { HeroCampaign } from "@/components/store/HeroCampaign";
 import { HomepageProductCard } from "@/components/store/HomepageProductCard";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { StoreHeader } from "@/components/store/StoreHeader";
-import { storeButtonClasses } from "@/components/store/ui/StoreButton";
-import { Container } from "@/components/ui/Container";
-import { Section } from "@/components/ui/Section";
 import { getCatalogProducts } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +21,6 @@ const homepageImages = {
     url: "/homepage/signature-set-editorial.jpg",
   },
 };
-
-const newArrivalPresentationImages = [
-  "/homepage/newarrival-1.jpeg",
-  "/homepage/newarrival-2.jpeg",
-  "/homepage/newarrival-3.jpeg",
-  "/homepage/newarrival-4.jpeg",
-];
 
 const categories = [
   {
@@ -55,66 +45,71 @@ export default async function Home() {
 
   return (
     <>
-      <StoreHeader />
+      <StoreHeader variant="editorial" />
 
-      <main id="main-content">
+      <main className="bg-bone text-black [&_a:focus-visible]:outline-black" id="main-content">
         <HeroCampaign image={homepageImages.hero} />
 
-        <Section
+        <section
           aria-labelledby="featured-categories-heading"
-          className="bg-[var(--color-canvas)]"
+          className="py-[72px] sm:py-20 min-[901px]:py-24"
           id="featured-categories"
-          spacing="large"
         >
-          <Container>
-            <h2
-              className="text-label uppercase text-[var(--color-text-primary)]"
-              id="featured-categories-heading"
-            >
-              Featured Categories
-            </h2>
+          <div className="mx-auto w-[calc(100%-40px)] max-w-[1200px]">
+            <div className="mb-8 flex items-start justify-between gap-6 sm:mb-12 sm:items-end">
+              <h2
+                className="max-w-[760px] font-goudy-old-style text-[40px] font-normal leading-[1.05] tracking-[-0.012em] max-[360px]:text-4xl sm:text-[clamp(2.5rem,4vw,3.5rem)]"
+                id="featured-categories-heading"
+              >
+                Featured Categories
+              </h2>
+            </div>
 
-            <div className="mt-[var(--space-4)] flex items-start justify-center gap-[var(--space-3)] sm:gap-[var(--space-5)] lg:mt-[var(--space-3)]">
-              {categories.map((category) => (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-6">
+              {categories.map((category, index) => (
                 <Link
-                  className="group flex min-w-0 flex-1 flex-col items-center text-center sm:max-w-40"
+                  className="group block overflow-hidden rounded-[5px] border border-[#e5e3df] bg-paper-white transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-cocoa motion-reduce:transition-none"
                   href={category.href}
                   key={category.label}
                 >
-                  <span className="relative size-[72px] overflow-hidden rounded-full bg-[var(--color-surface-container)] sm:size-24 lg:size-32">
+                  <span className="relative block aspect-[5/4] overflow-hidden bg-paper-white sm:aspect-[4/5]">
                     <Image
                       alt=""
-                      className="object-cover transition-transform duration-[var(--duration-slow)] ease-[var(--ease-blissfy)] group-hover:scale-[1.04]"
+                      className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.025] motion-reduce:transition-none"
                       fill
-                      sizes="(min-width: 1024px) 128px, (min-width: 640px) 96px, 72px"
+                      sizes="(max-width: 640px) 100vw, 33vw"
                       src={category.image}
                     />
                   </span>
-                  <span className="mt-[var(--space-3)] min-h-11 text-sm font-medium text-[var(--color-text-primary)]">
-                    {category.label}
+                  <span className="flex items-baseline justify-between gap-4 p-5 sm:p-6">
+                    <span className="font-goudy-old-style text-[26px] font-normal leading-[1.08] tracking-[-0.012em]">
+                      {category.label}
+                    </span>
+                    <span className="text-xs leading-[1.4] text-stone">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
                   </span>
                 </Link>
               ))}
             </div>
-          </Container>
-        </Section>
+          </div>
+        </section>
 
-        <Section
+        <section
           aria-labelledby="new-arrivals-heading"
-          className="bg-[var(--color-surface)]"
+          className="bg-paper-white py-[72px] sm:py-20 min-[901px]:py-24"
           id="new-arrivals"
-          spacing="large"
         >
-          <Container>
-            <div className="flex items-center justify-between gap-[var(--space-4)]">
+          <div className="mx-auto w-[calc(100%-40px)] max-w-[1200px]">
+            <div className="mb-8 flex items-start justify-between gap-6 sm:mb-12 sm:items-end">
               <h2
-                className="text-heading text-[var(--color-text-primary)]"
+                className="max-w-[760px] font-goudy-old-style text-[40px] font-normal leading-[1.05] tracking-[-0.012em] max-[360px]:text-4xl sm:text-[clamp(2.5rem,4vw,3.5rem)]"
                 id="new-arrivals-heading"
               >
                 New Arrivals
               </h2>
               <Link
-                className="text-label flex min-h-11 items-center uppercase text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+                className="inline-flex min-h-11 shrink-0 items-center border-b border-current text-[13px] font-medium uppercase tracking-[0.08em] text-black transition-colors duration-200 hover:text-stone motion-reduce:transition-none max-[360px]:text-[11px]"
                 href="/products"
               >
                 View All
@@ -122,35 +117,33 @@ export default async function Home() {
             </div>
 
             {featuredProducts.length > 0 ? (
-              <div className="mt-[var(--space-4)] grid grid-cols-2 gap-x-[var(--space-3)] gap-y-[var(--space-5)] lg:grid-cols-4 lg:gap-x-[var(--space-4)]">
-                {featuredProducts.map((product, index) => (
+              <div className="grid grid-cols-2 gap-3 min-[901px]:grid-cols-4 min-[901px]:gap-6">
+                {featuredProducts.map((product) => (
                   <HomepageProductCard
                     key={product.id}
-                    presentationImage={newArrivalPresentationImages[index]}
                     product={product}
                   />
                 ))}
               </div>
             ) : (
-              <div className="mt-[var(--space-5)] py-[var(--space-5)] text-center">
-                <h3 className="text-heading text-[var(--color-text-primary)]">
+              <div className="rounded-[5px] border border-[#e5e3df] bg-paper-white px-6 py-12 text-center">
+                <h3 className="font-goudy-old-style text-[26px] font-normal leading-[1.08]">
                   Katalog belum tersedia
                 </h3>
-                <p className="text-body mx-auto mt-[var(--space-3)] max-w-md text-[var(--color-text-secondary)]">
+                <p className="mx-auto mt-3 max-w-[420px] text-sm leading-normal text-stone">
                   Produk akan tampil di sini setelah katalog tersedia.
                 </p>
               </div>
             )}
-          </Container>
-        </Section>
+          </div>
+        </section>
 
-        <Section
+        <section
           aria-labelledby="signature-set-heading"
-          className="bg-[var(--color-canvas)]"
-          spacing="large"
+          className="bg-canvas py-[72px] text-black sm:py-20 min-[901px]:py-24 [&_a:focus-visible]:outline-black"
         >
-          <Container className="grid gap-[var(--space-5)] md:grid-cols-2 md:items-center md:gap-[var(--space-6)]">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-sm)] bg-[var(--color-surface-container)]">
+          <div className="mx-auto grid w-[calc(100%-40px)] max-w-[1200px] grid-cols-1 items-center gap-10 sm:gap-12 min-[901px]:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)] min-[901px]:gap-[clamp(48px,7vw,96px)]">
+            <div className="relative aspect-square overflow-hidden rounded-[5px] bg-black sm:aspect-[4/3]">
               <Image
                 alt={homepageImages.signatureSet.altText}
                 className="object-cover"
@@ -160,87 +153,51 @@ export default async function Home() {
               />
             </div>
 
-            <div className="max-w-xl md:justify-self-center">
+            <div className="max-w-[680px]">
               <h2
-                className="text-heading text-[var(--color-text-primary)]"
+                className="max-w-[520px] font-goudy-old-style text-[40px] font-normal leading-[1.05] tracking-[-0.012em] max-[360px]:text-4xl sm:text-[clamp(2.5rem,4vw,3.5rem)]"
                 id="signature-set-heading"
               >
                 The Signature Set
               </h2>
-              <p className="text-body mt-[var(--space-3)] text-[var(--color-text-secondary)]">
+              <p className="mt-6 max-w-[500px] text-base leading-normal text-stone">
                 Curated combinations designed for effortless harmony. Discover
                 pieces that speak the same minimalist language, whether worn
                 solo or shared.
               </p>
               <Link
-                className={storeButtonClasses({
-                  className:
-                    "mt-[var(--space-4)] rounded-[var(--radius-full)] px-[var(--space-4)] text-label !text-[var(--color-action-primary-text)] uppercase tracking-[var(--tracking-label)]",
-                  size: "compact",
-                })}
+                className="mt-8 inline-flex min-h-11 items-center justify-center rounded-[5px] border border-black bg-black px-4 py-[9px] text-[13px] font-medium uppercase tracking-[0.06em] text-white transition-colors duration-200 hover:bg-transparent hover:text-black focus-visible:outline-black motion-reduce:transition-none"
                 href="/products"
               >
                 Eksplorasi Set
               </Link>
             </div>
-          </Container>
-        </Section>
+          </div>
+        </section>
 
-        <Section
+        <section
           aria-labelledby="elevated-simplicity-heading"
-          className="bg-[var(--color-canvas)] text-center"
-          spacing="large"
+          className="bg-paper-white py-24 text-center sm:py-[120px]"
         >
-          <Container className="flex flex-col items-center">
-            <ClothingIcon />
+          <div className="mx-auto w-[calc(100%-40px)] max-w-[760px]">
+            <hr className="mx-auto mb-8 h-px w-12 border-0 bg-cocoa sm:mb-12" />
             <h2
-              className="text-display mt-[var(--space-4)] text-[var(--color-text-primary)]"
+              className="font-goudy-old-style text-[40px] font-normal leading-[1.05] tracking-[-0.012em] max-[360px]:text-4xl sm:text-[clamp(2.5rem,5vw,3.5rem)]"
               id="elevated-simplicity-heading"
             >
               Elevated Simplicity
             </h2>
-            <p className="text-body mt-[var(--space-3)] max-w-2xl text-[var(--color-text-secondary)]">
+            <p className="mx-auto mt-6 max-w-[600px] text-base leading-normal text-stone">
               Mindfully crafted pieces designed to blend seamlessly into your
               curated life. Slow fashion, high impact.
             </p>
-          </Container>
-        </Section>
+          </div>
+        </section>
       </main>
 
-      <StoreFooter />
+      <div className="flow-root bg-paper-white">
+        <StoreFooter variant="editorial" />
+      </div>
     </>
-  );
-}
-
-function ClothingIcon() {
-  return (
-    <svg
-      aria-hidden
-      className="size-8 text-[var(--color-text-primary)]"
-      fill="none"
-      viewBox="0 0 32 32"
-    >
-      <path
-        d="M13.5 7.5a2.5 2.5 0 1 1 3.7 2.2L16 10.5v2"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.5"
-      />
-      <path
-        d="m7 18 9-5 9 5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M10 16.5v8h12v-8"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="1.5"
-      />
-      <path d="M10 19h12" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
   );
 }

@@ -13,6 +13,12 @@ export const envSchema = z.object({
 
   DATABASE_URL: z.string().min(1),
 
+  CLOUDINARY_CLOUD_NAME: z.string().trim().min(1).optional(),
+
+  CLOUDINARY_API_KEY: z.string().trim().min(1).optional(),
+
+  CLOUDINARY_API_SECRET: z.string().trim().min(1).optional(),
+
   RAJAONGKIR_BASE_URL: z
     .string()
     .url()

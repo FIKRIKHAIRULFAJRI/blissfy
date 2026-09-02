@@ -51,18 +51,14 @@ export default async function ProductDetailPage({
 
   return (
     <>
-      <StoreHeader />
-      <Container
-        as="main"
-        className="pt-[calc(var(--space-6)+var(--space-5))]"
-        id="main-content"
-      >
-        <div className="mx-auto max-w-7xl">
+      <StoreHeader activePath="/products" variant="editorial" />
+      <main className="bg-bone text-black" id="main-content">
+        <Container className="max-w-[1200px] pb-10 pt-[30px] sm:pt-9 lg:pt-12">
           <nav aria-label="Breadcrumb">
-            <ol className="text-label flex flex-wrap items-center gap-[var(--space-2)] uppercase text-[var(--color-text-muted)]">
+            <ol className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase leading-normal tracking-[0.08em] text-stone sm:gap-3">
               <li>
                 <Link
-                  className="transition-colors hover:text-[var(--color-text-primary)]"
+                  className="transition-colors hover:text-black focus-visible:outline-black"
                   href="/"
                 >
                   Home
@@ -71,7 +67,7 @@ export default async function ProductDetailPage({
               <li aria-hidden>›</li>
               <li>
                 <Link
-                  className="transition-colors hover:text-[var(--color-text-primary)]"
+                  className="transition-colors hover:text-black focus-visible:outline-black"
                   href="/products"
                 >
                   Produk
@@ -82,14 +78,14 @@ export default async function ProductDetailPage({
               <li aria-hidden>›</li>
               <li
                 aria-current="page"
-                className="text-[var(--color-text-primary)]"
+                className="text-black"
               >
                 {product.name}
               </li>
             </ol>
           </nav>
 
-          <div className="mt-[var(--space-5)] grid grid-cols-1 gap-[var(--space-6)] md:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-12 lg:mt-12 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:items-start lg:gap-16 xl:gap-24">
             <ProductGallery
               images={product.images}
               primaryImage={product.primaryImage}
@@ -101,15 +97,15 @@ export default async function ProductDetailPage({
           {recommendations.length > 0 ? (
             <section
               aria-labelledby="product-recommendations-heading"
-              className="mt-[var(--space-6)] border-t border-[var(--color-border)] pt-[var(--space-6)]"
+              className="mt-24 border-t border-black/10 pb-12 pt-[72px] sm:mt-[120px] sm:pb-16 sm:pt-24"
             >
               <h2
-                className="text-heading uppercase tracking-[0.05em] text-[var(--color-text-primary)]"
+                className="font-goudy-old-style text-[32px] font-normal leading-[1.05] tracking-[-0.012em] text-black sm:text-[40px]"
                 id="product-recommendations-heading"
               >
                 You May Also Like
               </h2>
-              <div className="mt-[var(--space-5)] grid grid-cols-1 gap-x-[var(--space-3)] gap-y-[var(--space-5)] min-[360px]:grid-cols-2 lg:grid-cols-4 lg:gap-x-[var(--space-4)]">
+              <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-10 sm:mt-12 sm:gap-x-5 lg:grid-cols-4 lg:gap-x-6">
                 {recommendations.map((recommendation) => (
                   <div className="min-w-0" key={recommendation.id}>
                     <ProductCard product={recommendation} />
@@ -118,9 +114,11 @@ export default async function ProductDetailPage({
               </div>
             </section>
           ) : null}
-        </div>
-      </Container>
-      <StoreFooter />
+        </Container>
+      </main>
+      <div className="flow-root bg-bone">
+        <StoreFooter variant="editorial" />
+      </div>
     </>
   );
 }

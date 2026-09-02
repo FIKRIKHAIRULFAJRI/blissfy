@@ -83,6 +83,27 @@ Aturan image pipeline:
 - product tanpa image tetap valid dan memakai fallback presentational saat read;
 - file image tetap berada di Cloudinary, bukan di PostgreSQL.
 
+## Cloudinary product image management
+
+Credential Cloudinary hanya ditempatkan pada `apps/api/.env` untuk development
+lokal. Nama variabel tersedia di `apps/api/.env.example`:
+
+```text
+CLOUDINARY_CLOUD_NAME
+CLOUDINARY_API_KEY
+CLOUDINARY_API_SECRET
+```
+
+Jangan memakai prefix `NEXT_PUBLIC_` untuk credential tersebut. Admin browser
+mengirim file melalui authenticated Store proxy, lalu Nest API melakukan upload
+server-side. Folder aset ditentukan server sebagai
+`blissfy/products/{productId}` dan suffix public ID dibuat oleh server.
+
+Upload menerima JPEG, PNG, dan WebP dengan pemeriksaan MIME serta file
+signature. Batasnya 10 MiB per file dan maksimum 8 image per produk. Source
+Cloudinary disimpan tanpa resize agresif; transformasi delivery dapat diterapkan
+terpisah di masa depan.
+
 Constraint utama:
 
 - slug produk unik dan berformat URL-friendly.

@@ -20,16 +20,6 @@ const slugSchema = z
     "Slug hanya boleh huruf kecil, angka, dan tanda hubung.",
   );
 
-const imageUrlSchema = z
-  .string()
-  .trim()
-  .optional()
-  .transform((value) => value || "/products/placeholder-ivory.svg")
-  .refine(
-    (value) => value.startsWith("/") || URL.canParse(value),
-    "URL gambar harus berupa path lokal atau URL lengkap.",
-  );
-
 const categorySchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(2, "Nama kategori minimal 2 karakter."),
@@ -48,8 +38,6 @@ const productSchema = z.object({
     .number()
     .int("Harga harus berupa angka bulat.")
     .min(1, "Harga tidak boleh negatif atau nol."),
-  imageUrl: imageUrlSchema,
-  imageAlt: z.string().trim().optional(),
   isActive: z.boolean(),
 });
 
@@ -344,8 +332,6 @@ export async function createProduct(formData: FormData) {
     slug: getString(formData, "slug"),
     description: getString(formData, "description"),
     normalPrice: getString(formData, "normalPrice"),
-    imageUrl: getString(formData, "imageUrl"),
-    imageAlt: getString(formData, "imageAlt"),
     isActive: getBoolean(formData, "isActive"),
   });
 
@@ -399,21 +385,6 @@ export async function createProduct(formData: FormData) {
         parsed.data.description,
         parsed.data.normalPrice,
         parsed.data.isActive,
-      ],
-    );
-
-    await client.query(
-      `
-        INSERT INTO product_images (
-          id, "productId", url, "altText", "sortOrder", "isPrimary"
-        )
-        VALUES ($1, $2, $3, $4, 0, true)
-      `,
-      [
-        randomUUID(),
-        productId,
-        parsed.data.imageUrl,
-        parsed.data.imageAlt || parsed.data.name,
       ],
     );
 
@@ -478,8 +449,6 @@ export async function updateProduct(formData: FormData) {
     slug: getString(formData, "slug"),
     description: getString(formData, "description"),
     normalPrice: getString(formData, "normalPrice"),
-    imageUrl: getString(formData, "imageUrl"),
-    imageAlt: getString(formData, "imageAlt"),
     isActive: getBoolean(formData, "isActive"),
   });
 
@@ -516,44 +485,6 @@ export async function updateProduct(formData: FormData) {
       ],
     );
 
-    const primary = await client.query<{ id: string }>(
-      `
-        SELECT id::text
-        FROM product_images
-        WHERE "productId"::text = $1
-          AND "isPrimary" = true
-        ORDER BY "sortOrder" ASC
-        LIMIT 1
-      `,
-      [id],
-    );
-    const primaryId = primary.rows[0]?.id;
-
-    if (primaryId) {
-      await client.query(
-        `
-          UPDATE product_images
-          SET url = $2, "altText" = $3
-          WHERE id::text = $1
-        `,
-        [primaryId, parsed.data.imageUrl, parsed.data.imageAlt || parsed.data.name],
-      );
-    } else {
-      await client.query(
-        `
-          INSERT INTO product_images (
-            id, "productId", url, "altText", "sortOrder", "isPrimary"
-          )
-          VALUES ($1, $2, $3, $4, 0, true)
-        `,
-        [
-          randomUUID(),
-          id,
-          parsed.data.imageUrl,
-          parsed.data.imageAlt || parsed.data.name,
-        ],
-      );
-    }
   });
 
   redirectWith(path, { notice: "Produk berhasil diperbarui." });
@@ -570,7 +501,7 @@ export async function deleteProduct(formData: FormData) {
     });
   }
 
-  const [variantCount, discountCount] = await Promise.all([
+  const [variantCount, discountCount, imageCount] = await Promise.all([
     db.query<{ count: string }>(
       `SELECT COUNT(*)::text AS count FROM product_variants WHERE "productId"::text = $1`,
       [id],
@@ -579,22 +510,24 @@ export async function deleteProduct(formData: FormData) {
       `SELECT COUNT(*)::text AS count FROM discounts WHERE "productId"::text = $1`,
       [id],
     ),
+    db.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM product_images WHERE "productId"::text = $1`,
+      [id],
+    ),
   ]);
 
   if (
     Number(variantCount.rows[0]?.count ?? "0") > 0 ||
-    Number(discountCount.rows[0]?.count ?? "0") > 0
+    Number(discountCount.rows[0]?.count ?? "0") > 0 ||
+    Number(imageCount.rows[0]?.count ?? "0") > 0
   ) {
     redirectWith("/admin/products", {
       error:
-        "Produk tidak bisa dihapus karena masih memiliki varian atau diskon. Nonaktifkan produk untuk mengarsipkan.",
+        "Produk tidak bisa dihapus karena masih memiliki varian, diskon, atau gambar. Hapus gambar melalui Product Images terlebih dahulu, atau nonaktifkan produk.",
     });
   }
 
   await withTransaction(async (client) => {
-    await client.query(`DELETE FROM product_images WHERE "productId"::text = $1`, [
-      id,
-    ]);
     await client.query(`DELETE FROM products WHERE id::text = $1`, [id]);
   });
 

@@ -114,6 +114,15 @@
 }
 
 @theme inline {
+  /* Editorial storefront utilities from the approved theme reference. */
+  --color-bone: #f2f1ed;
+  --color-paper-white: #ffffff;
+  --color-cocoa: #3b3429;
+  --color-stone: #646464;
+  --color-ash: #b4aeac;
+  --font-goudy-old-style: "Goudy Old Style", "Palatino Linotype", Georgia,
+    serif;
+
   /* Canonical utilities for new storefront code. */
   --color-background: #fdf8f7;
   --color-surface-low: #f7f3f1;
@@ -176,9 +185,11 @@ body {
   line-height: var(--line-body);
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 button,

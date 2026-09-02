@@ -40,7 +40,7 @@ export function ProductGallery({
 
   return (
     <section aria-label={`Galeri ${productName}`}>
-      <div className="relative aspect-[3/4] overflow-hidden bg-[var(--color-surface-container)]">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-[5px] bg-[#e8e5df]">
         <Image
           alt={activeImage.altText}
           className="object-cover"
@@ -54,7 +54,7 @@ export function ProductGallery({
       {galleryImages.length > 1 ? (
         <div
           aria-label="Pilih gambar produk"
-          className="mt-[var(--space-3)] flex gap-[var(--space-3)] overflow-x-auto pb-[var(--space-1)]"
+          className="mt-3 flex gap-3 overflow-x-auto pb-1 sm:mt-4 sm:gap-4"
           role="group"
         >
           {galleryImages.map((image, index) => {
@@ -67,8 +67,8 @@ export function ProductGallery({
                 className={cn(
                   "relative h-24 w-20 shrink-0 overflow-hidden border bg-[var(--color-surface-container)] transition-opacity",
                   selected
-                    ? "border-[var(--color-text-brand)] opacity-100"
-                    : "border-transparent opacity-60 hover:opacity-100",
+                    ? "border-black opacity-100"
+                    : "border-transparent opacity-60 hover:border-ash hover:opacity-100",
                 )}
                 key={image.id}
                 onClick={() => setActiveImageId(image.id)}
