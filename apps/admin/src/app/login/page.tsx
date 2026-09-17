@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,10 +16,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // TODO: Implement Supabase Auth login
-      // For now, just redirect to dashboard
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      router.push('/dashboard');
+      await signIn(email, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login gagal');
     } finally {
@@ -35,7 +32,7 @@ export default function LoginPage() {
             Blissfy Admin
           </h1>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Login untuk mengakses dashboard
+            Login untuk mengakses dashboard (Custom DB)
           </p>
         </div>
 

@@ -13,6 +13,15 @@ export class ApiClient {
 
   private getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
+    const sessionStr = localStorage.getItem('admin_session');
+    if (sessionStr) {
+      try {
+        const session = JSON.parse(sessionStr);
+        return session.accessToken || null;
+      } catch (e) {
+        return null;
+      }
+    }
     return localStorage.getItem('admin_token');
   }
 

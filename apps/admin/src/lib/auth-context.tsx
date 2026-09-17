@@ -1,12 +1,8 @@
-/**
- * Auth context for admin session management
- */
-
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { authService, type AuthSession } from './auth';
+import { useRouter, usePathname } from 'next/navigation';
+import { authService, type AuthSession } from '@/lib/auth';
 
 interface AuthContextValue {
   session: AuthSession | null;
@@ -21,45 +17,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    // Check initial session
-    authService.getSession().then((session) => {
-      setSession(session);
+    authService.getSession().then((s) => {
+      setSession(s);
       setLoading(false);
     });
-
-    // Listen for auth changes
-    const { data } = authService.onAuthStateChange((session) => {
-      setSession(session);
-    });
-
-    return () => {
-      data.subscription.unsubscribe();
-    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const session = await authService.signIn(email, password);
-    setSession(session);
-    
-    // Store token in localStorage for API client
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('admin_token', session.accessToken);
+    try {
+      const s = await authService.signIn(email, password);
+      setSession(s);
+      // Tunggu sebentar sebelum redirect untuk memastikan state tersimpan
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 100);
+    } catch (error) {
+      throw error;
     }
-    
-    router.push('/dashboard');
   };
 
   const signOut = async () => {
     await authService.signOut();
     setSession(null);
-    
-    // Clear token from localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('admin_token');
-    }
-    
     router.push('/login');
   };
 
@@ -72,8 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }

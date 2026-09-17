@@ -44,7 +44,15 @@ export interface Product {
   slug: string;
   name: string;
   description: string;
+  material: string | null;
+  fit: string | null;
+  pattern: string | null;
+  careInstruction: string | null;
+  sizeGuide: string | null;
   normalPrice: number;
+  soldCount: number;
+  isNewArrival: boolean;
+  isBestSeller: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -82,7 +90,14 @@ export interface CreateProductRequest {
   slug: string;
   name: string;
   description: string;
+  material?: string;
+  fit?: string;
+  pattern?: string;
+  careInstruction?: string;
+  sizeGuide?: string;
   normalPrice: number;
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
   isActive?: boolean;
 }
 
@@ -91,7 +106,14 @@ export interface UpdateProductRequest {
   slug?: string;
   name?: string;
   description?: string;
+  material?: string;
+  fit?: string;
+  pattern?: string;
+  careInstruction?: string;
+  sizeGuide?: string;
   normalPrice?: number;
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
   isActive?: boolean;
 }
 

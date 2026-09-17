@@ -4,14 +4,22 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { productsApi, categoriesApi } from '@/lib/products-api';
-import type { Category, ProductWithRelations } from '@blissfy/contracts/products';
+import { ImageUploader } from '@/components/ImageUploader';
+import type { Category } from '@blissfy/contracts/products';
 
 type FormData = {
   categoryId: string;
   name: string;
   slug: string;
   description: string;
+  material: string;
+  fit: string;
+  pattern: string;
+  careInstruction: string;
+  sizeGuide: string;
   normalPrice: number;
+  isNewArrival: boolean;
+  isBestSeller: boolean;
   isActive: boolean;
 };
 
@@ -21,6 +29,7 @@ export default function EditProductPage() {
   const productId = params.id as string;
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +53,21 @@ export default function EditProductPage() {
         categoriesApi.getCategories(),
       ]);
 
-      setCategories(categoriesData.categories);
+      setCategories(categoriesData.categories || categoriesData);
+      setImages(productData.images?.map((img: any) => img.url) || []);
       reset({
         categoryId: productData.categoryId,
         name: productData.name,
         slug: productData.slug,
         description: productData.description,
+        material: productData.material || '',
+        fit: productData.fit || '',
+        pattern: productData.pattern || '',
+        careInstruction: productData.careInstruction || '',
+        sizeGuide: productData.sizeGuide || '',
         normalPrice: productData.normalPrice,
+        isNewArrival: productData.isNewArrival,
+        isBestSeller: productData.isBestSeller,
         isActive: productData.isActive,
       });
     } catch (err) {
@@ -64,7 +81,11 @@ export default function EditProductPage() {
     try {
       setSaving(true);
       setError(null);
-      await productsApi.updateProduct(productId, data);
+      await productsApi.updateProduct(productId, {
+        ...data,
+        normalPrice: Number(data.normalPrice),
+        images: images,
+      });
       router.push('/dashboard/products');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update product');
@@ -82,7 +103,7 @@ export default function EditProductPage() {
   }
 
   return (
-    <div>
+    <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
       </div>
@@ -95,147 +116,103 @@ export default function EditProductPage() {
 
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="bg-white rounded-lg shadow p-6 space-y-6"
+        className="bg-white rounded-lg shadow p-6 space-y-4"
       >
         <div>
-          <label
-            htmlFor="categoryId"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Category *
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Category *</label>
           <select
-            id="categoryId"
             {...register('categoryId', { required: 'Category is required' })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
           >
             <option value="">Select a category</option>
             {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
-          {errors.categoryId && (
-            <p className="mt-1 text-sm text-red-600">
-              {errors.categoryId.message}
-            </p>
-          )}
         </div>
 
         <div>
-          <label
-            htmlFor="name"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Product Name *
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Product Name *</label>
           <input
-            id="name"
-            type="text"
-            {...register('name', {
-              required: 'Product name is required',
-              minLength: {
-                value: 2,
-                message: 'Name must be at least 2 characters',
-              },
-              maxLength: {
-                value: 120,
-                message: 'Name must not exceed 120 characters',
-              },
-            })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {...register('name', { required: 'Product name is required' })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
-          {errors.name && (
-            <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
-          )}
         </div>
 
         <div>
-          <label
-            htmlFor="slug"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Slug *
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Slug *</label>
           <input
-            id="slug"
-            type="text"
-            {...register('slug', {
-              required: 'Slug is required',
-              pattern: {
-                value: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-                message: 'Slug must be lowercase with hyphens only',
-              },
-            })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {...register('slug', { required: 'Slug is required' })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
-          {errors.slug && (
-            <p className="mt-1 text-sm text-red-600">{errors.slug.message}</p>
-          )}
         </div>
 
         <div>
-          <label
-            htmlFor="description"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Description *
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Description *</label>
           <textarea
-            id="description"
-            rows={6}
-            {...register('description', {
-              required: 'Description is required',
-              minLength: {
-                value: 10,
-                message: 'Description must be at least 10 characters',
-              },
-            })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {...register('description', { required: 'Description is required' })}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
-          {errors.description && (
-            <p className="mt-1 text-sm text-red-600">
-              {errors.description.message}
-            </p>
-          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Material</label>
+            <input {...register('material')} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Fit</label>
+            <input {...register('fit')} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Pattern</label>
+            <input {...register('pattern')} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Care Instruction</label>
+            <textarea {...register('careInstruction')} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Size Guide</label>
+            <textarea {...register('sizeGuide')} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+          </div>
         </div>
 
         <div>
-          <label
-            htmlFor="normalPrice"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Price (Rp) *
-          </label>
-          <input
-            id="normalPrice"
-            type="number"
-            min="1"
-            step="1000"
-            {...register('normalPrice', {
-              required: 'Price is required',
-              min: { value: 1, message: 'Price must be at least Rp 1' },
-              valueAsNumber: true,
-            })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {errors.normalPrice && (
-            <p className="mt-1 text-sm text-red-600">
-              {errors.normalPrice.message}
-            </p>
-          )}
+          <label className="block text-sm font-medium text-gray-700">Images</label>
+          <div className="mt-2 space-y-2">
+            {images.map((url, index) => (
+              <img key={index} src={url} alt="Product" className="h-20 w-20 object-cover rounded" />
+            ))}
+            <ImageUploader onUploadComplete={(url) => setImages([...images, url])} />
+          </div>
         </div>
 
-        <div className="flex items-center">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Normal Price (IDR) *</label>
           <input
-            id="isActive"
-            type="checkbox"
-            {...register('isActive')}
-            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            type="number"
+            {...register('normalPrice', { required: true, valueAsNumber: true })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
-          <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">
-            Active (visible in store)
+        </div>
+
+        <div className="flex gap-6">
+          <label className="flex items-center">
+            <input type="checkbox" {...register('isNewArrival')} className="h-4 w-4" />
+            <span className="ml-2 text-sm text-gray-700">New Arrival</span>
+          </label>
+          <label className="flex items-center">
+            <input type="checkbox" {...register('isBestSeller')} className="h-4 w-4" />
+            <span className="ml-2 text-sm text-gray-700">Best Seller</span>
+          </label>
+          <label className="flex items-center">
+            <input type="checkbox" {...register('isActive')} className="h-4 w-4" />
+            <span className="ml-2 text-sm text-gray-700">Active</span>
           </label>
         </div>
 
@@ -243,7 +220,7 @@ export default function EditProductPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>

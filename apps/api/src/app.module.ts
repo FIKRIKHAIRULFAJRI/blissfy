@@ -3,6 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 
 import { AuthModule } from './auth/auth.module';
 import { CheckoutModule } from './checkout/checkout.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { HomepageModule } from './homepage/homepage.module';
+import { VouchersModule } from './vouchers/vouchers.module';
+import { FlashSalesModule } from './flash-sales/flash-sales.module';
 import { validateEnv } from './config/env.schema';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
@@ -23,6 +27,10 @@ import { UploadsModule } from './uploads/uploads.module';
     DatabaseModule,
 
     AuthModule,
+
+    DashboardModule,
+
+    HomepageModule,
 
     HealthModule,
 
