@@ -1,79 +1,52 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from '@supabase/supabase-js';
 
-export const ADMIN_SESSION_HEADER = 'x-blissfy-admin-session';
-
-export type AuthenticatedAdmin = {
+export interface AdminUser {
   id: string;
   email: string;
-  displayName: string | null;
-};
+}
 
 @Injectable()
 export class AdminSessionService {
-  constructor(private readonly database: DatabaseService) {}
+  private supabase: any;
 
-  async validateSessionToken(
-    sessionToken: string,
-  ): Promise<AuthenticatedAdmin | null> {
-    const [adminId, expiresAtRaw, signature, ...unexpected] =
-      sessionToken.split('.');
-    const expiresAt = Number(expiresAtRaw);
-
-    if (
-      unexpected.length > 0 ||
-      !adminId ||
-      !Number.isInteger(expiresAt) ||
-      !signature ||
-      expiresAt <= Math.floor(Date.now() / 1000)
-    ) {
-      return null;
-    }
-
-    const result = await this.database.query<
-      AuthenticatedAdmin & { password: string | null }
-    >(
-      `
-        SELECT
-          id::text AS id,
-          email,
-          "displayName",
-          password
-        FROM admin_users
-        WHERE id::text = $1
-        LIMIT 1
-      `,
-      [adminId],
+  constructor(private configService: ConfigService) {
+    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+    const supabaseServiceKey = this.configService.get<string>(
+      'SUPABASE_SERVICE_KEY',
     );
-    const admin = result.rows[0];
 
-    if (!admin?.password) {
-      return null;
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.warn('Supabase credentials not configured for admin session');
+      return;
     }
 
-    const expected = createHmac('sha256', admin.password)
-      .update(`${adminId}.${expiresAt}`)
-      .digest('base64url');
-
-    if (!this.isValidSignature(signature, expected)) {
-      return null;
-    }
-
-    return {
-      id: admin.id,
-      email: admin.email,
-      displayName: admin.displayName,
-    };
+    this.supabase = createClient(supabaseUrl, supabaseServiceKey);
   }
 
-  private isValidSignature(received: string, expected: string): boolean {
-    const receivedBuffer = Buffer.from(received);
-    const expectedBuffer = Buffer.from(expected);
+  async verifyToken(token: string): Promise<AdminUser | null> {
+    if (!this.supabase) {
+      console.warn('Supabase not configured');
+      return null;
+    }
 
-    return (
-      receivedBuffer.length === expectedBuffer.length &&
-      timingSafeEqual(receivedBuffer, expectedBuffer)
-    );
+    try {
+      // Verify JWT token with Supabase
+      const { data, error } = await this.supabase.auth.getUser(token);
+
+      if (error || !data.user) {
+        return null;
+      }
+
+      // Check if user is admin (can be extended with role checking)
+      return {
+        id: data.user.id,
+        email: data.user.email || '',
+      };
+    } catch (err) {
+      console.error('Token verification error:', err);
+      return null;
+    }
   }
 }

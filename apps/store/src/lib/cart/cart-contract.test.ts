@@ -4,6 +4,7 @@ import { cartValidationItemSchema } from "@/lib/cart/schemas";
 import {
   buildCartValidationPayload,
   migrateCartItems,
+  migrateSelectedVariantIds,
 } from "@/lib/cart/contract";
 import { useCartStore } from "@/lib/cart/store";
 import type { CartItem } from "@/lib/cart/types";
@@ -30,7 +31,11 @@ const sampleItem: CartItem = {
 };
 
 test("addItem produces canonical validation payload", () => {
-  useCartStore.setState({ items: [], hydrated: true });
+  useCartStore.setState({
+    items: [],
+    selectedVariantIds: [],
+    hydrated: true,
+  });
   useCartStore.getState().addItem(sampleItem);
 
   const [payloadItem] = buildCartValidationPayload(
@@ -50,6 +55,32 @@ test("addItem produces canonical validation payload", () => {
     },
   );
   assert.equal(cartValidationItemSchema.safeParse(payloadItem).success, true);
+  assert.deepEqual(useCartStore.getState().selectedVariantIds, [variantId]);
+});
+
+test("cart selection toggles and removing checked-out items preserves the rest", () => {
+  const secondItem: CartItem = {
+    ...sampleItem,
+    productId: "cmsq7qej3000igoun85on2rto",
+    variantId: "cmsq7qf5y000ngoungwj1j20a",
+  };
+
+  useCartStore.setState({
+    items: [sampleItem, secondItem],
+    selectedVariantIds: [variantId, secondItem.variantId],
+    hydrated: true,
+  });
+  useCartStore.getState().toggleItemSelection(secondItem.variantId);
+
+  assert.deepEqual(useCartStore.getState().selectedVariantIds, [variantId]);
+
+  useCartStore.getState().removeItems([variantId]);
+
+  assert.deepEqual(
+    useCartStore.getState().items.map((item) => item.variantId),
+    [secondItem.variantId],
+  );
+  assert.deepEqual(useCartStore.getState().selectedVariantIds, []);
 });
 
 test("persisted cart can reload and validate with the same contract", () => {
@@ -72,4 +103,14 @@ test("legacy item without variantId is deterministic stale data", () => {
   assert.equal(payloadItem.variantId, "");
   assert.equal(payloadItem.quantity, 1);
   assert.equal(cartValidationItemSchema.safeParse(payloadItem).success, false);
+});
+
+test("legacy cart migration selects all valid variants while preserving an explicit empty selection", () => {
+  const items = migrateCartItems({ items: [sampleItem] });
+
+  assert.deepEqual(migrateSelectedVariantIds({ items }, items), [variantId]);
+  assert.deepEqual(
+    migrateSelectedVariantIds({ items, selectedVariantIds: [] }, items),
+    [],
+  );
 });

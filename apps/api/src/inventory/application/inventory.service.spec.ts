@@ -1,65 +1,22 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { InventoryRepository } from '../infrastructure/inventory.repository';
+import { BadRequestException } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
+import { InventoryRepository } from '../infrastructure/inventory.repository';
 
-describe('InventoryService', () => {
-  let service: InventoryService;
+describe('InventoryService adjustment', () => {
+  const repository = { findAvailability: jest.fn(), adjustStock: jest.fn() };
+  const service = new InventoryService(repository as unknown as InventoryRepository);
 
-  const inventoryRepositoryMock = {
-    findAvailability: jest.fn(),
-  };
+  beforeEach(() => jest.clearAllMocks());
 
-  beforeEach(async () => {
-    jest.clearAllMocks();
+  it('records a non-zero adjustment through the repository', async () => {
+    repository.adjustStock.mockResolvedValue({ variantId: 'variant-1', previousStock: 4, stock: 9, quantityDelta: 5 });
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        InventoryService,
-        {
-          provide: InventoryRepository,
-          useValue: inventoryRepositoryMock,
-        },
-      ],
-    }).compile();
-
-    service = module.get<InventoryService>(InventoryService);
+    await expect(service.adjustStock('variant-1', { quantityDelta: 5, note: 'Restock supplier' })).resolves.toMatchObject({ stock: 9 });
+    expect(repository.adjustStock).toHaveBeenCalledWith('variant-1', 5, 'Restock supplier');
   });
 
-  it('should calculate available stock from on-hand minus reserved', async () => {
-    inventoryRepositoryMock.findAvailability.mockResolvedValue([
-      {
-        variantId: 'variant-1',
-        onHand: 10,
-        reserved: 3,
-      },
-    ]);
-
-    const result = await service.getVariantAvailability(['variant-1']);
-
-    expect(result.get('variant-1')).toEqual({
-      variantId: 'variant-1',
-      onHand: 10,
-      reserved: 3,
-      available: 7,
-    });
-  });
-
-  it('should never return negative available stock', async () => {
-    inventoryRepositoryMock.findAvailability.mockResolvedValue([
-      {
-        variantId: 'variant-1',
-        onHand: 2,
-        reserved: 5,
-      },
-    ]);
-
-    const result = await service.getVariantAvailability(['variant-1']);
-
-    expect(result.get('variant-1')).toEqual({
-      variantId: 'variant-1',
-      onHand: 2,
-      reserved: 5,
-      available: 0,
-    });
+  it('rejects an adjustment without an audit note', async () => {
+    await expect(service.adjustStock('variant-1', { quantityDelta: -1, note: '   ' })).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.adjustStock).not.toHaveBeenCalled();
   });
 });

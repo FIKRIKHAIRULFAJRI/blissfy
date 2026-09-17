@@ -5,6 +5,8 @@ import type { PoolClient } from "pg";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/auth";
+import { requestAdminCategoryApi } from "@/lib/admin/category-api";
+import { requestAdminProductApi } from "@/lib/admin/product-api";
 import { db } from "@/lib/db";
 
 const discountTypes = ["PERCENTAGE", "FIXED_AMOUNT"] as const;
@@ -19,14 +21,6 @@ const slugSchema = z
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
     "Slug hanya boleh huruf kecil, angka, dan tanda hubung.",
   );
-
-const categorySchema = z.object({
-  id: z.string().optional(),
-  name: z.string().trim().min(2, "Nama kategori minimal 2 karakter."),
-  slug: slugSchema,
-  description: z.string().trim().optional(),
-  isActive: z.boolean(),
-});
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -126,15 +120,6 @@ function isUniqueConstraintError(error: unknown) {
   );
 }
 
-async function ensureCategorySlug(slug: string, currentId?: string) {
-  const result = await db.query<{ id: string }>(
-    `SELECT id::text FROM categories WHERE slug = $1 LIMIT 1`,
-    [slug],
-  );
-  const existing = result.rows[0];
-  return !existing || existing.id === currentId;
-}
-
 async function ensureProductSlug(slug: string, currentId?: string) {
   const result = await db.query<{ id: string }>(
     `SELECT id::text FROM products WHERE slug = $1 LIMIT 1`,
@@ -211,43 +196,20 @@ async function withTransaction<T>(callback: (client: PoolClient) => Promise<T>) 
 export async function createCategory(formData: FormData) {
   await requireAdmin();
 
-  const parsed = categorySchema.safeParse({
+  const payload = {
     name: getString(formData, "name"),
     slug: getString(formData, "slug"),
     description: getString(formData, "description"),
     isActive: getBoolean(formData, "isActive"),
+  };
+  const response = await requestAdminCategoryApi({
+    body: JSON.stringify(payload),
+    method: "POST",
+    path: "/v1/admin/categories",
   });
 
-  if (!parsed.success) {
-    redirectWith("/admin/categories", { error: validationMessage(parsed.error) });
-  }
-
-  if (!(await ensureCategorySlug(parsed.data.slug))) {
-    redirectWith("/admin/categories", { error: "Slug kategori sudah dipakai." });
-  }
-
-  try {
-    await db.query(
-      `
-        INSERT INTO categories (id, slug, name, description, "isActive")
-        VALUES ($1, $2, $3, $4, $5)
-      `,
-      [
-        randomUUID(),
-        parsed.data.slug,
-        parsed.data.name,
-        parsed.data.description || null,
-        parsed.data.isActive,
-      ],
-    );
-  } catch (error) {
-    if (isUniqueConstraintError(error)) {
-      redirectWith("/admin/categories", {
-        error: "Slug kategori sudah dipakai.",
-      });
-    }
-
-    throw error;
+  if (!response.ok) {
+    redirectWith("/admin/categories", { error: await apiErrorMessage(response) });
   }
 
   redirectWith("/admin/categories", { notice: "Kategori berhasil dibuat." });
@@ -257,41 +219,25 @@ export async function updateCategory(formData: FormData) {
   await requireAdmin();
   const id = getString(formData, "id");
 
-  const parsed = categorySchema.safeParse({
-    id,
+  if (!id) {
+    redirectWith("/admin/categories", { error: "Data kategori tidak valid." });
+  }
+
+  const payload = {
     name: getString(formData, "name"),
     slug: getString(formData, "slug"),
     description: getString(formData, "description"),
     isActive: getBoolean(formData, "isActive"),
+  };
+  const response = await requestAdminCategoryApi({
+    body: JSON.stringify(payload),
+    method: "PATCH",
+    path: `/v1/admin/categories/${encodeURIComponent(id)}`,
   });
 
-  if (!parsed.success || !id) {
-    redirectWith("/admin/categories", { error: "Data kategori tidak valid." });
+  if (!response.ok) {
+    redirectWith("/admin/categories", { error: await apiErrorMessage(response) });
   }
-
-  if (!(await ensureCategorySlug(parsed.data.slug, id))) {
-    redirectWith("/admin/categories", { error: "Slug kategori sudah dipakai." });
-  }
-
-  await db.query(
-    `
-      UPDATE categories
-      SET
-        name = $2,
-        slug = $3,
-        description = $4,
-        "isActive" = $5,
-        "updatedAt" = NOW()
-      WHERE id::text = $1
-    `,
-    [
-      id,
-      parsed.data.name,
-      parsed.data.slug,
-      parsed.data.description || null,
-      parsed.data.isActive,
-    ],
-  );
 
   redirectWith("/admin/categories", { notice: "Kategori berhasil diperbarui." });
 }
@@ -307,20 +253,31 @@ export async function deleteCategory(formData: FormData) {
     });
   }
 
-  const productCount = await db.query<{ count: string }>(
-    `SELECT COUNT(*)::text AS count FROM products WHERE "categoryId"::text = $1`,
-    [id],
-  );
+  const response = await requestAdminCategoryApi({
+    method: "DELETE",
+    path: `/v1/admin/categories/${encodeURIComponent(id)}`,
+  });
 
-  if (Number(productCount.rows[0]?.count ?? "0") > 0) {
-    redirectWith("/admin/categories", {
-      error:
-        "Kategori tidak bisa dihapus karena masih dipakai produk. Nonaktifkan kategori jika perlu disembunyikan.",
-    });
+  if (!response.ok) {
+    redirectWith("/admin/categories", { error: await apiErrorMessage(response) });
+  }
+  redirectWith("/admin/categories", { notice: "Kategori berhasil dihapus." });
+}
+
+async function apiErrorMessage(response: Response): Promise<string> {
+  try {
+    const payload = (await response.json()) as { message?: string | string[] };
+    if (Array.isArray(payload.message)) {
+      return payload.message[0] ?? "Permintaan kategori tidak valid.";
+    }
+    if (payload.message) {
+      return payload.message;
+    }
+  } catch {
+    // Keep the stable fallback when an upstream response is not JSON.
   }
 
-  await db.query(`DELETE FROM categories WHERE id::text = $1`, [id]);
-  redirectWith("/admin/categories", { notice: "Kategori berhasil dihapus." });
+  return "Permintaan kategori gagal. Coba lagi.";
 }
 
 export async function createProduct(formData: FormData) {
@@ -341,96 +298,11 @@ export async function createProduct(formData: FormData) {
     });
   }
 
-  if (!(await ensureProductSlug(parsed.data.slug))) {
-    redirectWith("/admin/products/new", { error: "Slug produk sudah dipakai." });
-  }
-
   const initialVariant = getInitialVariant(formData);
   const initialDiscount = getInitialDiscount(formData);
-
-  if (initialVariant && !(await ensureSku(initialVariant.sku))) {
-    redirectWith("/admin/products/new", { error: "SKU varian sudah dipakai." });
-  }
-
-  if (initialDiscount?.type === "PERCENTAGE" && initialDiscount.value > 90) {
-    redirectWith("/admin/products/new", {
-      error: "Diskon persentase maksimal 90% agar harga tidak menjadi nol.",
-    });
-  }
-
-  if (
-    initialDiscount?.type === "FIXED_AMOUNT" &&
-    initialDiscount.value >= parsed.data.normalPrice
-  ) {
-    redirectWith("/admin/products/new", {
-      error: "Diskon nominal harus lebih kecil dari harga normal produk.",
-    });
-  }
-
-  const productId = randomUUID();
-
-  await withTransaction(async (client) => {
-    await client.query(
-      `
-        INSERT INTO products (
-          id, "categoryId", slug, name, description, "normalPrice", "isActive"
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `,
-      [
-        productId,
-        parsed.data.categoryId,
-        parsed.data.slug,
-        parsed.data.name,
-        parsed.data.description,
-        parsed.data.normalPrice,
-        parsed.data.isActive,
-      ],
-    );
-
-    if (initialVariant) {
-      await client.query(
-        `
-          INSERT INTO product_variants (
-            id, "productId", sku, "colorName", "colorHex", size,
-            "weightGram", stock, "isActive"
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        `,
-        [
-          randomUUID(),
-          productId,
-          initialVariant.sku,
-          initialVariant.colorName,
-          initialVariant.colorHex,
-          initialVariant.size,
-          initialVariant.weightGram,
-          initialVariant.stock,
-          initialVariant.isActive,
-        ],
-      );
-    }
-
-    if (initialDiscount) {
-      await client.query(
-        `
-          INSERT INTO discounts (
-            id, "productId", type, value, "startsAt", "endsAt", "isActive"
-          )
-          VALUES ($1, $2, $3::"DiscountType", $4, $5, $6, $7)
-        `,
-        [
-          randomUUID(),
-          productId,
-          initialDiscount.type,
-          initialDiscount.value,
-          initialDiscount.startsAt,
-          initialDiscount.endsAt,
-          initialDiscount.isActive,
-        ],
-      );
-    }
-  });
+  const response = await requestAdminProductApi({ body: JSON.stringify({ ...parsed.data, initialVariant, initialDiscount }), method: "POST", path: "/v1/admin/products" });
+  if (!response.ok) redirectWith("/admin/products/new", { error: await apiErrorMessage(response) });
+  const { id: productId } = (await response.json()) as { id: string };
 
   redirectWith(`/admin/products/${productId}`, {
     notice: "Produk berhasil dibuat.",
@@ -456,36 +328,8 @@ export async function updateProduct(formData: FormData) {
     redirectWith(path, { error: "Data produk tidak valid." });
   }
 
-  if (!(await ensureProductSlug(parsed.data.slug, id))) {
-    redirectWith(path, { error: "Slug produk sudah dipakai." });
-  }
-
-  await withTransaction(async (client) => {
-    await client.query(
-      `
-        UPDATE products
-        SET
-          "categoryId" = $2,
-          name = $3,
-          slug = $4,
-          description = $5,
-          "normalPrice" = $6,
-          "isActive" = $7,
-          "updatedAt" = NOW()
-        WHERE id::text = $1
-      `,
-      [
-        id,
-        parsed.data.categoryId,
-        parsed.data.name,
-        parsed.data.slug,
-        parsed.data.description,
-        parsed.data.normalPrice,
-        parsed.data.isActive,
-      ],
-    );
-
-  });
+  const response = await requestAdminProductApi({ body: JSON.stringify(parsed.data), method: "PATCH", path: `/v1/admin/products/${encodeURIComponent(id)}` });
+  if (!response.ok) redirectWith(path, { error: await apiErrorMessage(response) });
 
   redirectWith(path, { notice: "Produk berhasil diperbarui." });
 }
@@ -501,35 +345,8 @@ export async function deleteProduct(formData: FormData) {
     });
   }
 
-  const [variantCount, discountCount, imageCount] = await Promise.all([
-    db.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM product_variants WHERE "productId"::text = $1`,
-      [id],
-    ),
-    db.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM discounts WHERE "productId"::text = $1`,
-      [id],
-    ),
-    db.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM product_images WHERE "productId"::text = $1`,
-      [id],
-    ),
-  ]);
-
-  if (
-    Number(variantCount.rows[0]?.count ?? "0") > 0 ||
-    Number(discountCount.rows[0]?.count ?? "0") > 0 ||
-    Number(imageCount.rows[0]?.count ?? "0") > 0
-  ) {
-    redirectWith("/admin/products", {
-      error:
-        "Produk tidak bisa dihapus karena masih memiliki varian, diskon, atau gambar. Hapus gambar melalui Product Images terlebih dahulu, atau nonaktifkan produk.",
-    });
-  }
-
-  await withTransaction(async (client) => {
-    await client.query(`DELETE FROM products WHERE id::text = $1`, [id]);
-  });
+  const response = await requestAdminProductApi({ method: "DELETE", path: `/v1/admin/products/${encodeURIComponent(id)}` });
+  if (!response.ok) redirectWith("/admin/products", { error: await apiErrorMessage(response) });
 
   redirectWith("/admin/products", { notice: "Produk berhasil dihapus." });
 }
@@ -544,10 +361,8 @@ export async function toggleProductStatus(formData: FormData) {
     redirectWith(returnTo, { error: "Produk tidak valid." });
   }
 
-  await db.query(
-    `UPDATE products SET "isActive" = $2, "updatedAt" = NOW() WHERE id::text = $1`,
-    [id, isActive],
-  );
+  const response = await requestAdminProductApi({ body: JSON.stringify({ isActive }), method: "PATCH", path: `/v1/admin/products/${encodeURIComponent(id)}/status` });
+  if (!response.ok) redirectWith(returnTo, { error: await apiErrorMessage(response) });
 
   redirectWith(returnTo, {
     notice: isActive ? "Produk diaktifkan." : "Produk dinonaktifkan.",

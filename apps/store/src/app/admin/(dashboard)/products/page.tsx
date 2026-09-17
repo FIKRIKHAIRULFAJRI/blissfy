@@ -5,24 +5,12 @@ import {
   deleteProduct,
   toggleProductStatus,
 } from "../../catalog-actions";
-import { db } from "@/lib/db";
+import { listAdminProducts } from "@/lib/admin/product-api";
 import { formatRupiah } from "@/lib/placeholders";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 8;
-
-type ProductListRow = {
-  id: string;
-  slug: string;
-  name: string;
-  normalPrice: number;
-  isActive: boolean;
-  categoryName: string;
-  variantCount: string;
-  totalStock: string | null;
-  activeDiscountCount: string;
-};
 
 type ProductsPageProps = {
   searchParams?: Promise<{
@@ -41,73 +29,11 @@ export default async function AdminProductsPage({
   const page = Math.max(Number(params.page ?? "1") || 1, 1);
   const status = params.status === "inactive" ? "inactive" : params.status === "active" ? "active" : "all";
   const q = params.q?.trim() ?? "";
-  const filters: string[] = [];
-  const values: Array<string | number | boolean> = [];
-
-  if (status === "active" || status === "inactive") {
-    values.push(status === "active");
-    filters.push(`p."isActive" = $${values.length}`);
-  }
-
-  if (q) {
-    values.push(`%${q}%`);
-    filters.push(
-      `(p.name ILIKE $${values.length} OR p.slug ILIKE $${values.length})`,
-    );
-  }
-
-  const whereSql = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
-  const listValues = [...values, PAGE_SIZE, (page - 1) * PAGE_SIZE];
-
-  const [productsResult, totalResult] = await Promise.all([
-    db.query<ProductListRow>(
-      `
-        SELECT
-          p.id::text,
-          p.slug,
-          p.name,
-          p."normalPrice",
-          p."isActive",
-          c.name AS "categoryName",
-          COALESCE(v."variantCount", 0)::text AS "variantCount",
-          COALESCE(v."totalStock", 0)::text AS "totalStock",
-          COALESCE(d."activeDiscountCount", 0)::text AS "activeDiscountCount"
-        FROM products p
-        INNER JOIN categories c ON c.id = p."categoryId"
-        LEFT JOIN (
-          SELECT
-            "productId",
-            COUNT(*) AS "variantCount",
-            SUM(stock) AS "totalStock"
-          FROM product_variants
-          GROUP BY "productId"
-        ) v ON v."productId" = p.id
-        LEFT JOIN (
-          SELECT
-            "productId",
-            COUNT(*) AS "activeDiscountCount"
-          FROM discounts
-          WHERE "isActive" = true
-          GROUP BY "productId"
-        ) d ON d."productId" = p.id
-        ${whereSql}
-        ORDER BY p."updatedAt" DESC
-        LIMIT $${values.length + 1}
-        OFFSET $${values.length + 2}
-      `,
-      listValues,
-    ),
-    db.query<{ total: string }>(
-      `
-        SELECT COUNT(*)::text AS total
-        FROM products p
-        ${whereSql}
-      `,
-      values,
-    ),
-  ]);
-  const products = productsResult.rows;
-  const total = Number(totalResult.rows[0]?.total ?? "0");
+  const { products, total } = await listAdminProducts({
+    page,
+    q,
+    status,
+  });
 
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
@@ -186,7 +112,7 @@ export default async function AdminProductsPage({
               </thead>
               <tbody>
                 {products.map((product) => {
-                  const stock = Number(product.totalStock ?? "0");
+                  const stock = product.totalStock;
                   const editPath = `/admin/products/${product.id}`;
 
                   return (
@@ -212,7 +138,7 @@ export default async function AdminProductsPage({
                       </td>
                       <td className="px-4 py-4 font-semibold text-ink">
                         {formatRupiah(product.normalPrice)}
-                        {Number(product.activeDiscountCount) > 0 ? (
+                        {product.activeDiscountCount > 0 ? (
                           <span className="ml-2 rounded-full bg-warning-bg px-2 py-1 text-xs text-warning">
                             Diskon aktif
                           </span>

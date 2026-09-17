@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ChangeEvent, InputHTMLAttributes, ReactNode } from "react";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   useForm,
   useWatch,
@@ -24,7 +25,6 @@ import {
   StoreButton,
   storeButtonClasses,
 } from "@/components/store/ui/StoreButton";
-import { Badge } from "@/components/ui/badge";
 import { StoreCheckbox } from "@/components/store/ui/StoreCheckbox";
 import { StoreFieldMessage } from "@/components/store/ui/StoreFieldMessage";
 import { StoreInput } from "@/components/store/ui/StoreInput";
@@ -70,8 +70,17 @@ export function CheckoutView() {
   const router = useRouter();
   const hydrated = useCartStore((state) => state.hydrated);
   const items = useCartStore((state) => state.items);
-  const clearCart = useCartStore((state) => state.clearCart);
+  const selectedVariantIds = useCartStore(
+    (state) => state.selectedVariantIds,
+  );
+  const removeItems = useCartStore((state) => state.removeItems);
   const syncValidatedItems = useCartStore((state) => state.syncValidatedItems);
+
+  const checkoutItems = useMemo(
+    () =>
+      items.filter((item) => selectedVariantIds.includes(item.variantId)),
+    [items, selectedVariantIds],
+  );
 
   const [validation, setValidation] =
     useState<CartValidationResponse | null>(null);
@@ -158,20 +167,23 @@ export function CheckoutView() {
   const totalTemporary =
     (validation?.summary.netSubtotal ?? 0) +
     (selectedQuote?.cost ?? 0);
+  const summaryItemCount =
+    validation?.summary.totalItems ??
+    checkoutItems.reduce((total, item) => total + item.quantity, 0);
 
   useEffect(() => {
     ensureCartHydration();
   }, []);
 
   useEffect(() => {
-    if (!hydrated || items.length === 0) {
+    if (!hydrated || checkoutItems.length === 0) {
       return;
     }
 
     const controller = new AbortController();
 
     startTransition(() => {
-      validateCartItems(items, controller.signal)
+      validateCartItems(checkoutItems, controller.signal)
         .then((result) => {
           setValidation(result);
           setCartError(null);
@@ -190,7 +202,7 @@ export function CheckoutView() {
     });
 
     return () => controller.abort();
-  }, [hydrated, items, syncValidatedItems]);
+  }, [checkoutItems, hydrated, syncValidatedItems]);
 
   useEffect(() => {
     void loadRegions({
@@ -225,7 +237,7 @@ export function CheckoutView() {
 
   useEffect(() => {
     resetShippingRates();
-  }, [items, selectedDistrictId, postalCode]);
+  }, [checkoutItems, selectedDistrictId, postalCode]);
 
   useEffect(() => {
     const selectedDistrict = districts.data.find(
@@ -244,8 +256,8 @@ export function CheckoutView() {
   }, [districts.data, form, selectedDistrictId]);
 
   const validationMatchesItems =
-    validation?.items.length === items.length &&
-    items.every((item) =>
+    validation?.items.length === checkoutItems.length &&
+    checkoutItems.every((item) =>
       validation.items.some(
         (validatedItem) =>
           validatedItem.variantId === item.variantId &&
@@ -255,7 +267,7 @@ export function CheckoutView() {
 
   const canShowForm =
     hydrated &&
-    items.length > 0 &&
+    checkoutItems.length > 0 &&
     validationMatchesItems &&
     validation?.summary.allValid &&
     !cartError &&
@@ -299,7 +311,7 @@ export function CheckoutView() {
         {
           body: JSON.stringify({
             idempotencyKey,
-            items: buildCartValidationPayload(items).items.map(
+            items: buildCartValidationPayload(checkoutItems).items.map(
               (item) => ({
                 productId: item.productId,
                 variantId: item.variantId,
@@ -350,7 +362,7 @@ export function CheckoutView() {
         );
       }
 
-      clearCart();
+      removeItems(checkoutItems.map((item) => item.variantId));
       clearCheckoutIdempotencyKey();
 
       router.push(
@@ -411,7 +423,7 @@ export function CheckoutView() {
                 : undefined,
 
             items:
-              buildCartValidationPayload(items)
+              buildCartValidationPayload(checkoutItems)
                 .items,
           }),
 
@@ -471,626 +483,425 @@ export function CheckoutView() {
     return <CheckoutSkeleton />;
   }
 
-  if (items.length === 0) {
+  if (checkoutItems.length === 0) {
+    const hasCartItems = items.length > 0;
+
     return (
-      <section className="rounded-[var(--radius-xl)] border border-border bg-surface p-8 text-center md:p-12">
-        <h1 className="text-3xl font-semibold text-ink">
-          Checkout membutuhkan keranjang
+      <section className="mx-auto max-w-[760px] rounded-[10px] border border-black/10 bg-paper-white p-8 text-center md:p-12">
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone">
+          Checkout
+        </p>
+        <h1 className="mt-4 text-[32px] font-semibold leading-[1.1] tracking-[-0.025em] text-black md:text-[38px]">
+          {hasCartItems
+            ? "Select an item to checkout"
+            : "Your bag is empty"}
         </h1>
 
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-ink-soft">
-          Tambahkan produk dengan varian valid sebelum mengisi data pengiriman.
+        <p className="mx-auto mt-4 max-w-xl text-sm leading-[1.6] text-stone">
+          {hasCartItems
+            ? "Return to your bag and select at least one item you would like to purchase."
+            : "Add a product with a valid color and size before continuing to checkout."}
         </p>
 
         <Link
           className={storeButtonClasses({
             className: "mt-6",
           })}
-          href="/products"
+          href={hasCartItems ? "/cart" : "/products"}
         >
-          Lihat katalog
+          {hasCartItems ? "Return to Your Bag" : "Shop Products"}
         </Link>
       </section>
     );
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
-      <section className="rounded-[var(--radius-xl)] border border-border bg-surface p-5 md:p-8">
-        <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-olive">
-              Checkout aman
-            </p>
+    <div className="mx-auto max-w-[1200px]">
+      <header>
+        <h1 className="text-[34px] font-semibold leading-[1.1] tracking-[-0.025em] text-black sm:text-[40px]">
+          Checkout
+        </h1>
+        <p className="mt-3 text-sm leading-[1.6] text-stone">
+          Complete your order securely. No account required.
+        </p>
+      </header>
 
-            <h1 className="mt-2 text-3xl font-semibold text-ink md:text-4xl">
-              Data penerima
-            </h1>
-          </div>
+      <div className="mt-8 grid gap-8 sm:mt-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10">
+        <div>
+          {cartError ? (
+            <div className="mb-6 rounded-[8px] border border-black/10 bg-paper-white p-5 text-sm text-[var(--color-error)]">
+              {cartError}
+            </div>
+          ) : null}
 
-          <Link
-            className="text-sm font-semibold text-olive hover:text-ink"
-            href="/cart"
+          {isPending ? (
+            <div className="mb-6 rounded-[8px] border border-black/10 bg-paper-white p-5 text-sm text-stone">
+              Revalidating current prices and stock.
+            </div>
+          ) : null}
+
+          {validation && !validation.summary.allValid ? (
+            <div className="mb-6 rounded-[8px] border border-black/10 bg-paper-white p-5 text-sm text-[var(--color-error)]">
+              Some selected items are no longer valid. Return to your bag and
+              review them before continuing.
+            </div>
+          ) : null}
+
+          <form
+            className={cn("space-y-8", !canShowForm && "opacity-60")}
+            id="checkout-form"
+            onSubmit={form.handleSubmit(handleSubmit)}
           >
-            Kembali ke keranjang
-          </Link>
-        </div>
-
-        {cartError ? (
-          <div className="mt-6 rounded-[var(--radius-lg)] bg-danger-bg p-4 text-sm font-medium text-danger">
-            {cartError}
-          </div>
-        ) : null}
-
-        {isPending ? (
-          <div className="mt-6 rounded-[var(--radius-lg)] bg-info-bg p-4 text-sm font-medium text-info">
-            Memvalidasi ulang harga dan stok dari database.
-          </div>
-        ) : null}
-
-        {validation &&
-        !validation.summary.allValid ? (
-          <div className="mt-6 rounded-[var(--radius-lg)] bg-warning-bg p-4 text-sm font-medium text-warning">
-            Ada item yang tidak valid atau stoknya berubah. Periksa keranjang
-            sebelum checkout.
-          </div>
-        ) : null}
-
-        <form
-          className={cn(
-            "mt-8 space-y-8",
-            !canShowForm && "opacity-60",
-          )}
-          onSubmit={form.handleSubmit(
-            handleSubmit,
-          )}
-        >
-          <fieldset
-            disabled={
-              !canShowForm ||
-              isCreatingOrder
-            }
-            className="space-y-5"
-          >
-            <FormSection title="Informasi penerima">
-              <TextField
-                error={
-                  form.formState.errors
-                    .recipientName?.message
-                }
-                label="Nama penerima"
-                registration={form.register(
-                  "recipientName",
-                )}
-              />
-
-              <div className="grid gap-5 md:grid-cols-2">
+            <fieldset
+              className="space-y-8"
+              disabled={!canShowForm || isCreatingOrder}
+            >
+              <FormSection step="1" title="Contact Information">
                 <TextField
-                  error={
-                    form.formState.errors
-                      .whatsapp?.message
-                  }
-                  inputMode="tel"
-                  label="Nomor WhatsApp"
-                  placeholder="08..."
-                  registration={form.register(
-                    "whatsapp",
-                  )}
+                  error={form.formState.errors.recipientName?.message}
+                  label="Full Name"
+                  placeholder="e.g., Jane Doe"
+                  registration={form.register("recipientName")}
                 />
 
-                <TextField
-                  error={
-                    form.formState.errors
-                      .email?.message
-                  }
-                  label="Email"
-                  registration={form.register(
-                    "email",
-                  )}
-                  type="email"
-                />
-              </div>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <TextField
+                    error={form.formState.errors.email?.message}
+                    label="Email"
+                    placeholder="jane@example.com"
+                    registration={form.register("email")}
+                    type="email"
+                  />
 
-              <p className="text-xs leading-5 text-ink-muted">
-                Bukti transaksi dan akses informasi pesanan akan dikirim melalui
-                email pada tahap order.
-              </p>
-            </FormSection>
+                  <TextField
+                    error={form.formState.errors.whatsapp?.message}
+                    inputMode="tel"
+                    label="WhatsApp Number"
+                    placeholder="08123456789"
+                    registration={form.register("whatsapp")}
+                  />
+                </div>
 
-            <FormSection title="Alamat pengiriman">
-              <div className="grid gap-5 md:grid-cols-2">
+                <p className="text-xs leading-5 text-stone">
+                  Used for order confirmation, shipping updates, and access to
+                  your order status.
+                </p>
+              </FormSection>
+
+              <FormSection step="2" title="Shipping Address">
                 <SelectField
-                  error={
-                    form.formState.errors
-                      .province?.message
-                  }
-                  label="Provinsi"
-                  loading={
-                    provinces.loading
-                  }
+                  error={form.formState.errors.province?.message}
+                  label="Province"
+                  loading={provinces.loading}
                   options={provinces.data}
-                  placeholder="Pilih provinsi"
-                  registration={form.register(
-                    "province",
-                  )}
+                  placeholder="Select Province"
+                  registration={form.register("province")}
                   onValueChange={() => {
-                    form.setValue(
-                      "city",
-                      "",
-                    );
-
-                    form.setValue(
-                      "district",
-                      "",
-                    );
-
-                    form.setValue(
-                      "postalCode",
-                      "",
-                    );
-
-                    setCities(
-                      initialRegionState,
-                    );
-
-                    setDistricts(
-                      initialRegionState,
-                    );
-
+                    form.setValue("city", "");
+                    form.setValue("district", "");
+                    form.setValue("postalCode", "");
+                    setCities(initialRegionState);
+                    setDistricts(initialRegionState);
                     resetShippingRates();
                   }}
                   retry={() => {
                     void loadRegions({
                       level: "province",
-                      setState:
-                        setProvinces,
+                      setState: setProvinces,
                     });
                   }}
-                  stateError={
-                    provinces.error
-                  }
+                  stateError={provinces.error}
                 />
 
-                <SelectField
-                  disabled={
-                    !selectedProvinceId
-                  }
-                  error={
-                    form.formState.errors
-                      .city?.message
-                  }
-                  label="Kota/kabupaten"
-                  loading={cities.loading}
-                  options={cities.data}
-                  placeholder="Pilih kota/kabupaten"
-                  registration={form.register(
-                    "city",
-                  )}
-                  onValueChange={() => {
-                    form.setValue(
-                      "district",
-                      "",
-                    );
+                <div className="grid gap-5 md:grid-cols-2">
+                  <SelectField
+                    disabled={!selectedProvinceId}
+                    error={form.formState.errors.city?.message}
+                    label="City / Regency"
+                    loading={cities.loading}
+                    options={cities.data}
+                    placeholder="Select City / Regency"
+                    registration={form.register("city")}
+                    onValueChange={() => {
+                      form.setValue("district", "");
+                      form.setValue("postalCode", "");
+                      setDistricts(initialRegionState);
+                      resetShippingRates();
+                    }}
+                    retry={() => {
+                      if (selectedProvinceId) {
+                        void loadRegions({
+                          level: "city",
+                          parentId: selectedProvinceId,
+                          setState: setCities,
+                        });
+                      }
+                    }}
+                    stateError={cities.error}
+                  />
 
-                    form.setValue(
-                      "postalCode",
-                      "",
-                    );
-
-                    setDistricts(
-                      initialRegionState,
-                    );
-
-                    resetShippingRates();
-                  }}
-                  retry={() => {
-                    if (
-                      selectedProvinceId
-                    ) {
-                      void loadRegions({
-                        level: "city",
-                        parentId:
-                          selectedProvinceId,
-                        setState:
-                          setCities,
-                      });
-                    }
-                  }}
-                  stateError={cities.error}
-                />
-
-                <SelectField
-                  disabled={
-                    !selectedCityId
-                  }
-                  error={
-                    form.formState.errors
-                      .district?.message
-                  }
-                  label="Kecamatan"
-                  loading={
-                    districts.loading
-                  }
-                  options={districts.data}
-                  placeholder="Pilih kecamatan"
-                  registration={form.register(
-                    "district",
-                  )}
-                  onValueChange={() => {
-                    resetShippingRates();
-                  }}
-                  retry={() => {
-                    if (selectedCityId) {
-                      void loadRegions({
-                        level:
-                          "district",
-                        parentId:
-                          selectedCityId,
-                        setState:
-                          setDistricts,
-                      });
-                    }
-                  }}
-                  stateError={
-                    districts.error
-                  }
-                />
+                  <SelectField
+                    disabled={!selectedCityId}
+                    error={form.formState.errors.district?.message}
+                    label="District"
+                    loading={districts.loading}
+                    options={districts.data}
+                    placeholder="Select District"
+                    registration={form.register("district")}
+                    onValueChange={resetShippingRates}
+                    retry={() => {
+                      if (selectedCityId) {
+                        void loadRegions({
+                          level: "district",
+                          parentId: selectedCityId,
+                          setState: setDistricts,
+                        });
+                      }
+                    }}
+                    stateError={districts.error}
+                  />
+                </div>
 
                 <TextField
-                  error={
-                    form.formState.errors
-                      .postalCode?.message
-                  }
+                  error={form.formState.errors.postalCode?.message}
                   inputMode="numeric"
-                  label="Kode pos"
-                  registration={form.register(
-                    "postalCode",
-                  )}
+                  label="Postal Code"
+                  placeholder="12345"
+                  registration={form.register("postalCode")}
                 />
-              </div>
 
-              <TextAreaField
-                error={
-                  form.formState.errors
-                    .address?.message
-                }
-                label="Alamat lengkap"
-                registration={form.register(
-                  "address",
-                )}
-              />
-            </FormSection>
+                <TextAreaField
+                  error={form.formState.errors.address?.message}
+                  label="Full Address"
+                  placeholder="Street name, house number, building, or other address details"
+                  registration={form.register("address")}
+                />
+              </FormSection>
 
-            <FormSection title="Pilihan kurir">
-              <div className="rounded-[var(--radius-lg)] border border-info/20 bg-info-bg p-4 text-sm leading-6 text-info">
-                Cek ongkir menggunakan berat dan stok yang divalidasi ulang dari
-                Supabase. Layanan final dibatasi ke JNE dan J&T.
-              </div>
+              <FormSection step="3" title="Shipping Method">
+                <p className="text-sm leading-[1.6] text-stone">
+                  Rates are calculated from the selected address and validated
+                  package weight. Available services are limited to JNE and
+                  J&amp;T.
+                </p>
 
-              <button
-                className={storeButtonClasses({
-                  className:
-                    "w-full sm:w-fit",
-                  variant: "secondary",
-                })}
-                disabled={
-                  !canCheckShipping ||
-                  shippingRates.loading
-                }
-                onClick={
-                  handleCheckShipping
-                }
-                type="button"
-              >
-                {shippingRates.loading
-                  ? "Menghitung ongkir..."
-                  : "Cek ongkir"}
-              </button>
-
-              {shippingRates.error ? (
-                <div className="rounded-[var(--radius-lg)] bg-danger-bg p-4 text-sm font-medium text-danger">
-                  <p>
-                    {shippingRates.error}
-                  </p>
-
-                  <StoreButton
-                    className="mt-3"
-                    disabled={
-                      !canCheckShipping ||
+                <button
+                  className={storeButtonClasses({
+                    className: cn(
+                      "w-full rounded-[5px] border uppercase tracking-[0.08em] focus-visible:outline-black sm:w-fit",
                       shippingRates.loading
-                    }
-                    onClick={
-                      handleCheckShipping
-                    }
-                    size="compact"
-                    type="button"
-                    variant="destructive"
-                  >
-                    Coba lagi
-                  </StoreButton>
-                </div>
-              ) : null}
+                        ? "!border-[#2C2C2A] !bg-paper-white !text-[#2C2C2A] disabled:!cursor-wait"
+                        : "border-[#2C2C2A] bg-[#2C2C2A] text-white hover:bg-black",
+                    ),
+                  })}
+                  disabled={!canShowForm || shippingRates.loading}
+                  onClick={handleCheckShipping}
+                  type="button"
+                >
+                  {shippingRates.loading
+                    ? "Calculating shipping..."
+                    : "Check"}
+                </button>
 
-              {shippingRates.quotes
-                .length > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-ink-soft">
-                    Berat tervalidasi{" "}
-                    {
-                      shippingRates.totalWeightGrams
-                    }{" "}
-                    gram termasuk kemasan{" "}
-                    {
-                      shippingRates.packagingWeightGrams
-                    }{" "}
-                    gram.
-                  </p>
+                {shippingRates.error ? (
+                  <div className="rounded-[5px] border border-black/10 bg-bone p-4 text-sm text-[var(--color-error)]">
+                    <p>{shippingRates.error}</p>
+                    <StoreButton
+                      className="mt-3"
+                      disabled={!canShowForm || shippingRates.loading}
+                      onClick={handleCheckShipping}
+                      size="compact"
+                      type="button"
+                      variant="destructive"
+                    >
+                      Try again
+                    </StoreButton>
+                  </div>
+                ) : null}
 
-                  {shippingRates.quotes.map(
-                    (quote) => (
+                {shippingRates.quotes.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-xs leading-5 text-stone">
+                      Validated package weight: {shippingRates.totalWeightGrams} g,
+                      including {shippingRates.packagingWeightGrams} g packaging.
+                    </p>
+
+                    {shippingRates.quotes.map((quote) => (
                       <label
                         className={cn(
-                          "block cursor-pointer rounded-[var(--radius-lg)] border p-4 transition-colors",
-                          shippingRates.selectedQuoteId ===
-                            quote.quoteId
-                            ? "border-ink bg-surface-muted"
-                            : "border-border bg-surface hover:border-border-strong",
+                          "flex cursor-pointer items-start gap-4 rounded-[5px] border p-4 transition-colors",
+                          shippingRates.selectedQuoteId === quote.quoteId
+                            ? "border-[#2C2C2A] bg-paper-white"
+                            : "border-black/10 bg-paper-white hover:border-black/40",
                         )}
-                        key={
-                          quote.quoteId
-                        }
+                        key={quote.quoteId}
                       >
                         <input
-                          className="sr-only"
+                          checked={
+                            shippingRates.selectedQuoteId === quote.quoteId
+                          }
+                          className="mt-1 size-4 accent-[#2C2C2A]"
                           name="shippingQuote"
                           onChange={() =>
-                            setShippingRates(
-                              (
-                                current,
-                              ) => ({
-                                ...current,
-                                selectedQuoteId:
-                                  quote.quoteId,
-                              }),
-                            )
+                            setShippingRates((current) => ({
+                              ...current,
+                              selectedQuoteId: quote.quoteId,
+                            }))
                           }
                           type="radio"
                         />
 
-                        <span className="flex items-start justify-between gap-4">
+                        <span className="flex min-w-0 flex-1 items-start justify-between gap-4">
                           <span>
-                            <span className="block text-sm font-semibold text-ink">
-                              {
-                                quote.courierName
-                              }{" "}
-                              -{" "}
-                              {
-                                quote.serviceName
-                              }
+                            <span className="block text-sm font-medium text-black">
+                              {quote.courierName} {quote.serviceName}
                             </span>
-
-                            <span className="mt-1 block text-xs font-medium text-ink-muted">
-                              Estimasi{" "}
-                              {
-                                quote.estimatedDelivery
-                              }
+                            <span className="mt-1 block text-xs text-stone">
+                              Estimated {quote.estimatedDelivery}
                             </span>
                           </span>
-
-                          <span className="text-sm font-semibold text-ink">
-                            {formatRupiah(
-                              quote.cost,
-                            )}
+                          <span className="shrink-0 text-sm font-medium text-black">
+                            {formatRupiah(quote.cost)}
                           </span>
                         </span>
                       </label>
-                    ),
-                  )}
-                </div>
-              ) : null}
-            </FormSection>
+                    ))}
+                  </div>
+                ) : null}
+              </FormSection>
 
-            <FormSection title="Catatan dan persetujuan">
-              <TextAreaField
-                error={
-                  form.formState.errors
-                    .orderNote?.message
-                }
-                label="Catatan pesanan"
-                optional
-                registration={form.register(
-                  "orderNote",
-                )}
-              />
-
-              <label
-                className="flex min-h-11 gap-3 rounded-[var(--radius-lg)] border border-border bg-surface-muted p-4 text-sm leading-6 text-ink-soft"
-                htmlFor="checkout-termsAccepted"
-              >
-                <StoreCheckbox
-                  aria-describedby={
-                    form.formState.errors
-                      .termsAccepted?.message
-                      ? "checkout-termsAccepted-error"
-                      : undefined
-                  }
-                  aria-invalid={Boolean(
-                    form.formState.errors
-                      .termsAccepted?.message,
-                  )}
-                  className="mt-1"
-                  id="checkout-termsAccepted"
-                  {...form.register(
-                    "termsAccepted",
-                  )}
+              <FormSection step="4" title="Order Notes">
+                <TextAreaField
+                  error={form.formState.errors.orderNote?.message}
+                  label="Order Notes"
+                  optional
+                  placeholder="Leave a message for the seller..."
+                  registration={form.register("orderNote")}
                 />
 
-                <span>
-                  Saya menyetujui syarat pembelian dan kebijakan privasi
-                  Blissfy.co.
-                </span>
-              </label>
-
-              {form.formState.errors
-                .termsAccepted?.message ? (
-                <StoreFieldMessage
-                  className="block font-medium"
-                  id="checkout-termsAccepted-error"
-                  variant="error"
+                <label
+                  className="flex min-h-11 items-start gap-3 text-sm leading-[1.6] text-stone"
+                  htmlFor="checkout-termsAccepted"
                 >
-                  {
-                    form.formState
-                      .errors
-                      .termsAccepted
-                      .message
-                  }
-                </StoreFieldMessage>
-              ) : null}
-            </FormSection>
-          </fieldset>
+                  <StoreCheckbox
+                    aria-describedby={
+                      form.formState.errors.termsAccepted?.message
+                        ? "checkout-termsAccepted-error"
+                        : undefined
+                    }
+                    aria-invalid={Boolean(
+                      form.formState.errors.termsAccepted?.message,
+                    )}
+                    className="mt-0.5"
+                    id="checkout-termsAccepted"
+                    {...form.register("termsAccepted")}
+                  />
+                  <span>
+                    Saya menyetujui Syarat &amp; Ketentuan serta Kebijakan
+                    Privasi blissfy.co.
+                  </span>
+                </label>
 
-          {orderError ? (
-            <div className="rounded-[var(--radius-lg)] bg-danger-bg p-4 text-sm font-medium text-danger">
-              {orderError}
+                {form.formState.errors.termsAccepted?.message ? (
+                  <StoreFieldMessage
+                    className="block font-medium"
+                    id="checkout-termsAccepted-error"
+                    variant="error"
+                  >
+                    {form.formState.errors.termsAccepted.message}
+                  </StoreFieldMessage>
+                ) : null}
+              </FormSection>
+            </fieldset>
+
+            {orderError ? (
+              <div className="rounded-[5px] border border-black/10 bg-paper-white p-4 text-sm text-[var(--color-error)]">
+                {orderError}
+              </div>
+            ) : null}
+          </form>
+        </div>
+
+        <aside className="h-fit rounded-[10px] border border-black/[0.06] bg-paper-white p-6 lg:sticky lg:top-28">
+          <div className="flex items-center justify-between gap-4 border-b border-black/10 pb-5">
+            <h2 className="text-[24px] font-semibold leading-tight tracking-[-0.02em] text-black">
+              Order Summary
+            </h2>
+            <span className="rounded-[3px] bg-bone px-2 py-1 text-[10px] font-medium text-stone">
+              {summaryItemCount} {summaryItemCount === 1 ? "item" : "items"}
+            </span>
+          </div>
+
+          <div className="mt-5 space-y-4 border-b border-black/10 pb-5">
+            {(validation?.items ?? []).map((item) => (
+              <div
+                className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-3 text-sm"
+                key={item.variantId}
+              >
+                <div className="relative aspect-[3/4] overflow-hidden rounded-[5px] bg-bone">
+                  <Image
+                    alt={item.imageAlt}
+                    className="object-cover"
+                    fill
+                    sizes="56px"
+                    src={item.imageUrl}
+                  />
+                  <span className="absolute right-0 top-0 grid min-h-4 min-w-4 place-items-center bg-[#2C2C2A] px-1 text-[9px] text-white">
+                    {item.quantity}
+                  </span>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-black">{item.name}</p>
+                  <p className="mt-1 text-[11px] leading-tight text-stone">
+                    Color: {item.colorName} · Size: {item.size}
+                  </p>
+                </div>
+
+                <p className="text-right text-sm font-medium text-black">
+                  {formatRupiah(item.lineNet)}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <dl className="mt-5 space-y-4 text-sm">
+            <SummaryRow
+              label="Subtotal"
+              value={formatRupiah(validation?.summary.netSubtotal ?? 0)}
+            />
+            <SummaryRow
+              label="Shipping"
+              value={selectedQuote ? formatRupiah(selectedQuote.cost) : "—"}
+            />
+
+            <div className="border-t border-black/10 pt-5">
+              <SummaryRow
+                label="Total"
+                strong
+                value={formatRupiah(totalTemporary)}
+              />
             </div>
-          ) : null}
+          </dl>
 
           <button
             className={storeButtonClasses({
-              className: "w-full",
+              className:
+                "mt-6 w-full rounded-[5px] border border-[#2C2C2A] bg-[#2C2C2A] uppercase tracking-[0.08em] text-white hover:bg-black focus-visible:outline-black",
               size: "large",
             })}
-            disabled={
-              !canCreateOrder ||
-              isCreatingOrder
-            }
+            disabled={!canShowForm || isCreatingOrder}
+            form="checkout-form"
             type="submit"
           >
-            {isCreatingOrder
-              ? "Membuat pesanan..."
-              : "Buat pesanan"}
+            {isCreatingOrder ? "Creating Order..." : "Continue to Payment"}
           </button>
 
-          <p className="text-sm leading-6 text-ink-muted">
-            Setelah pesanan dibuat, stok ditahan selama 10 menit. QRIS
-            akan diaktifkan pada tahap berikutnya.
+          <p className="mt-4 flex items-center justify-center gap-2 text-xs text-stone">
+            <LockIcon /> Secure QRIS payment
           </p>
-        </form>
-      </section>
-
-      <aside className="h-fit rounded-[var(--radius-xl)] border border-border bg-surface p-5 lg:sticky lg:top-28">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold text-ink">
-            Ringkasan pesanan
-          </h2>
-
-          {validation?.summary
-            .allValid ? (
-            <Badge tone="success">
-              Valid
-            </Badge>
-          ) : (
-            <Badge tone="warning">
-              Perlu cek
-            </Badge>
-          )}
-        </div>
-
-        <div className="mt-5 space-y-4">
-          {(validation?.items ?? []).map(
-            (item) => (
-              <div
-                className="border-b border-border pb-4 text-sm last:border-b-0"
-                key={item.variantId}
-              >
-                <div className="flex justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-ink">
-                      {item.name}
-                    </p>
-
-                    <p className="mt-1 text-ink-muted">
-                      {item.colorName} /{" "}
-                      {item.size} x{" "}
-                      {item.quantity}
-                    </p>
-
-                    <p className="mt-1 text-xs font-medium text-ink-muted">
-                      {
-                        item.lineWeightGram
-                      }{" "}
-                      gram
-                    </p>
-                  </div>
-
-                  <p className="font-semibold text-ink">
-                    {formatRupiah(
-                      item.lineNet,
-                    )}
-                  </p>
-                </div>
-              </div>
-            ),
-          )}
-        </div>
-
-        <dl className="mt-5 space-y-3 text-sm">
-          <SummaryRow
-            label="Subtotal kotor"
-            value={formatRupiah(
-              validation?.summary
-                .grossSubtotal ?? 0,
-            )}
-          />
-
-          <SummaryRow
-            label="Diskon produk"
-            value={`-${formatRupiah(
-              validation?.summary
-                .discountTotal ?? 0,
-            )}`}
-          />
-
-          <SummaryRow
-            label="Subtotal bersih"
-            value={formatRupiah(
-              validation?.summary
-                .netSubtotal ?? 0,
-            )}
-          />
-
-          <SummaryRow
-            label="Ongkos kirim"
-            value={
-              selectedQuote
-                ? formatRupiah(
-                    selectedQuote.cost,
-                  )
-                : "Belum dipilih"
-            }
-          />
-
-          <div className="border-t border-border pt-4">
-            <SummaryRow
-              label="Total sementara"
-              strong
-              value={formatRupiah(
-                totalTemporary,
-              )}
-            />
-          </div>
-        </dl>
-
-        {!selectedQuote ? (
-          <p className="mt-4 rounded-[var(--radius-md)] bg-warning-bg p-3 text-sm leading-6 text-warning">
-            Pilih layanan pengiriman sebelum tahap order final nanti.
-          </p>
-        ) : (
-          <p className="mt-4 rounded-[var(--radius-md)] bg-info-bg p-3 text-sm leading-6 text-info">
-            Pesanan akan dibuat dengan snapshot harga, stok, dan ongkir saat ini.
-          </p>
-        )}
-      </aside>
+        </aside>
+      </div>
     </div>
   );
 
@@ -1244,17 +1055,22 @@ async function loadRegions({
 
 function FormSection({
   children,
+  step,
   title,
 }: {
   children: ReactNode;
+  step: string;
   title: string;
 }) {
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-ink">
-        {title}
-      </h2>
-      {children}
+    <section className="rounded-[10px] border border-black/[0.06] bg-paper-white p-5 sm:p-8">
+      <div className="flex items-center gap-3 border-b border-black/10 pb-5">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full border border-black/20 text-xs font-medium text-black">
+          {step}
+        </span>
+        <h2 className="text-xl font-semibold text-black">{title}</h2>
+      </div>
+      <div className="mt-6 space-y-5">{children}</div>
     </section>
   );
 }
@@ -1281,20 +1097,20 @@ function TextField({
 
   return (
     <label
-      className="block text-sm font-semibold text-ink"
+      className="block text-xs font-medium text-black"
       htmlFor={fieldId}
     >
       {label}{" "}
       {optional ? (
-        <span className="text-ink-muted">
-          (opsional)
+        <span className="font-normal text-stone">
+          (Optional)
         </span>
       ) : null}
 
       <StoreInput
         aria-describedby={error ? errorId : undefined}
         aria-invalid={Boolean(error)}
-        className="mt-2"
+        className="mt-2 min-h-[52px] !rounded-[5px] !border-black/20 !bg-paper-white px-4 !text-sm !text-black shadow-none placeholder:!text-stone focus:!border-black focus-visible:!outline-black"
         id={fieldId}
         inputMode={inputMode}
         placeholder={placeholder}
@@ -1364,7 +1180,7 @@ function SelectField({
 
   return (
     <label
-      className="block text-sm font-semibold text-ink"
+      className="block text-xs font-medium text-black"
       htmlFor={fieldId}
     >
       {label}
@@ -1372,7 +1188,7 @@ function SelectField({
       <StoreSelect
         aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
-        className="mt-2"
+        className="mt-2 min-h-[52px] !rounded-[5px] !border-black/20 !bg-paper-white px-4 !text-sm !text-black shadow-none focus:!border-black focus-visible:!outline-black disabled:!bg-paper-white disabled:!text-stone"
         disabled={
           disabled || loading
         }
@@ -1385,7 +1201,7 @@ function SelectField({
       >
         <option value="">
           {loading
-            ? "Memuat..."
+            ? "Loading..."
             : placeholder}
         </option>
 
@@ -1411,7 +1227,7 @@ function SelectField({
             onClick={retry}
             type="button"
           >
-            Coba lagi
+            Try again
           </button>
         </StoreFieldMessage>
       ) : null}
@@ -1421,7 +1237,7 @@ function SelectField({
           className="mt-2 block font-medium"
           id={emptyHintId}
         >
-          Data belum tersedia.
+          Data is not available yet.
         </StoreFieldMessage>
       ) : null}
 
@@ -1442,11 +1258,13 @@ function TextAreaField({
   error,
   label,
   optional = false,
+  placeholder,
   registration,
 }: {
   error?: string;
   label: string;
   optional?: boolean;
+  placeholder?: string;
   registration: UseFormRegisterReturn;
 }) {
   const fieldId = `checkout-${registration.name.replace(/\./g, "-")}`;
@@ -1454,21 +1272,22 @@ function TextAreaField({
 
   return (
     <label
-      className="block text-sm font-semibold text-ink"
+      className="block text-xs font-medium text-black"
       htmlFor={fieldId}
     >
       {label}{" "}
       {optional ? (
-        <span className="text-ink-muted">
-          (opsional)
+        <span className="font-normal text-stone">
+          (Optional)
         </span>
       ) : null}
 
       <StoreTextarea
         aria-describedby={error ? errorId : undefined}
         aria-invalid={Boolean(error)}
-        className="mt-2"
+        className="mt-2 min-h-[112px] resize-y !rounded-[5px] !border-black/20 !bg-paper-white px-4 py-3 !text-sm !text-black shadow-none placeholder:!text-stone focus:!border-black focus-visible:!outline-black"
         id={fieldId}
+        placeholder={placeholder}
         rows={4}
         {...registration}
       />
@@ -1512,12 +1331,38 @@ function SummaryRow({
   );
 }
 
+function LockIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="size-4"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M7 10V8a5 5 0 0 1 10 0v2m-9 0h8a2 2 0 0 1 2 2v7H6v-7a2 2 0 0 1 2-2Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
+
 function CheckoutSkeleton() {
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
-      <div className="h-[760px] animate-pulse rounded-[var(--radius-xl)] bg-surface-muted" />
-
-      <div className="h-96 animate-pulse rounded-[var(--radius-xl)] bg-surface-muted" />
+    <div className="mx-auto max-w-[1200px] animate-pulse">
+      <div className="h-12 w-48 rounded-[5px] bg-black/[0.06]" />
+      <div className="mt-3 h-4 w-72 max-w-full rounded-[5px] bg-black/[0.05]" />
+      <div className="mt-10 grid gap-8 lg:mt-12 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12">
+        <div className="space-y-8">
+          <div className="h-72 rounded-[10px] border border-black/[0.06] bg-paper-white" />
+          <div className="h-[520px] rounded-[10px] border border-black/[0.06] bg-paper-white" />
+          <div className="h-64 rounded-[10px] border border-black/[0.06] bg-paper-white" />
+        </div>
+        <div className="h-[520px] rounded-[10px] border border-black/[0.06] bg-paper-white" />
+      </div>
     </div>
   );
 }

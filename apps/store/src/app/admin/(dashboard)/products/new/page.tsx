@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AdminNotice } from "@/components/admin/AdminNotice";
 import { buttonClasses } from "@/components/ui/button";
 import { createProduct } from "../../../catalog-actions";
-import { db } from "@/lib/db";
+import { listAdminCategories } from "@/lib/admin/category-api";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +17,9 @@ export default async function NewProductPage({
 }: NewProductPageProps) {
   const [params, categories] = await Promise.all([
     searchParams,
-    db.query<{ id: string; name: string }>(`
-      SELECT id::text, name
-      FROM categories
-      WHERE "isActive" = true
-      ORDER BY name ASC
-    `),
+    listAdminCategories(),
   ]);
-  const categoryRows = categories.rows;
+  const categoryRows = categories.filter((category) => category.isActive);
 
   return (
     <div className="space-y-6">

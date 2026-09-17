@@ -1,6 +1,6 @@
 import type { CartItem, ValidatedCartItem } from "@/lib/cart/types";
 
-export const CART_STORAGE_VERSION = 2;
+export const CART_STORAGE_VERSION = 3;
 
 const fallbackImage = "/products/placeholder-ivory.svg";
 
@@ -123,6 +123,34 @@ export function migrateCartItems(value: unknown): CartItem[] {
   }
 
   return maybeState.map((item) => normalizeCartItem(item));
+}
+
+export function migrateSelectedVariantIds(
+  value: unknown,
+  items: CartItem[],
+) {
+  const record =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : null;
+  const persistedSelection = record?.selectedVariantIds;
+  const availableVariantIds = new Set(
+    items.map((item) => item.variantId).filter(Boolean),
+  );
+
+  if (!Array.isArray(persistedSelection)) {
+    return Array.from(availableVariantIds);
+  }
+
+  return Array.from(
+    new Set(
+      persistedSelection.filter(
+        (variantId): variantId is string =>
+          typeof variantId === "string" &&
+          availableVariantIds.has(variantId),
+      ),
+    ),
+  );
 }
 
 export function normalizeCartItem(item: unknown): CartItem {

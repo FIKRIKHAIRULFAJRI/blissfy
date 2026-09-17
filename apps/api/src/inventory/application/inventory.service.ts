@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type { VariantAvailability } from '../domain/inventory.types';
 import { InventoryRepository } from '../infrastructure/inventory.repository';
 
@@ -26,5 +26,25 @@ export class InventoryService {
         ];
       }),
     );
+  }
+
+  async adjustStock(
+    variantId: string,
+    adjustment: number,
+    reason: string,
+  ): Promise<{
+    variantId: string;
+    previousStock: number;
+    newStock: number;
+  } | null> {
+    if (!reason.trim()) {
+      throw new BadRequestException('Reason untuk adjustment wajib diisi.');
+    }
+
+    if (adjustment === 0) {
+      throw new BadRequestException('Adjustment tidak boleh nol.');
+    }
+
+    return this.inventoryRepository.adjustStock(variantId, adjustment, reason);
   }
 }

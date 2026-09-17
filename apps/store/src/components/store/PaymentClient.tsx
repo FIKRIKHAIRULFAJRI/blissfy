@@ -74,6 +74,9 @@ export function PaymentClient({
   const [isCreating, setIsCreating] =
     useState(false);
 
+  const [isRefreshing, setIsRefreshing] =
+    useState(false);
+
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
@@ -179,6 +182,8 @@ export function PaymentClient({
 
   const refreshStatus =
     useCallback(async () => {
+      setIsRefreshing(true);
+
       try {
         const response =
           await fetch(
@@ -220,6 +225,8 @@ export function PaymentClient({
         setErrorMessage(
           "Status pembayaran belum dapat dicek.",
         );
+      } finally {
+        setIsRefreshing(false);
       }
     }, [accessToken]);
 
@@ -290,161 +297,149 @@ export function PaymentClient({
   ]);
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-[var(--radius-lg)] border border-border bg-surface-muted p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-olive">
-              Status pembayaran
-            </p>
+    <div className="text-center">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-stone">
+        Order #{payment.orderNumber}
+      </p>
 
-            <p className="mt-1 text-xl font-semibold text-ink">
-              {statusCopy.title}
-            </p>
-          </div>
+      {payment.paymentStatus === "PENDING" ? (
+        <>
+          <p className="mt-6 text-[11px] font-medium uppercase tracking-[0.14em] text-stone">
+            Payment expires in
+          </p>
+          <p className="mt-1 text-[48px] font-semibold leading-none tracking-[-0.04em] text-black sm:text-[56px]">
+            {countdown}
+          </p>
+        </>
+      ) : null}
 
-          <div className="text-left sm:text-right">
-            <p className="text-xs font-semibold uppercase text-ink-muted">
-              Total
-            </p>
+      <div className="mt-5 flex items-center justify-center gap-2 text-sm text-black">
+        <span
+          aria-hidden="true"
+          className={getStatusDotClasses(payment.paymentStatus)}
+        />
+        <span>{statusCopy.title}</span>
+      </div>
 
-            <p className="mt-1 text-xl font-semibold text-ink">
-              {formatRupiah(
-                payment.amount,
-              )}
-            </p>
-          </div>
-        </div>
-
-        <p className="mt-3 text-sm leading-6 text-ink-soft">
-          {
-            statusCopy.description
-          }
+      <div className="mt-7">
+        <p className="text-[11px] font-medium tracking-[0.04em] text-stone">
+          Total Payment
+        </p>
+        <p className="mt-1 text-[28px] font-semibold leading-none tracking-[-0.02em] text-black">
+          {formatRupiah(payment.amount)}
         </p>
       </div>
 
-      {payment.paymentStatus ===
-      "PENDING" ? (
-        <div className="rounded-[var(--radius-lg)] border border-border p-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start">
-            <div className="flex min-h-64 flex-1 items-center justify-center rounded-[var(--radius-md)] bg-surface-muted p-4">
+      {payment.paymentStatus === "PENDING" ? (
+        <>
+          <section className="mt-9 rounded-[6px] border border-black/15 bg-paper-white p-5 sm:p-7">
+            <h1 className="text-xs font-semibold uppercase tracking-[0.14em] text-black">
+              Scan to pay with QRIS
+            </h1>
+
+            <div className="mx-auto mt-7 flex min-h-[220px] max-w-[320px] items-center justify-center bg-[#F5F8FA] p-5">
               {payment.qrImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  alt={`QRIS pembayaran ${payment.orderNumber}`}
-                  className="h-auto max-h-80 w-full max-w-80 object-contain"
-                  src={
-                    payment.qrImageUrl
-                  }
+                  alt={`QRIS payment ${payment.orderNumber}`}
+                  className="h-auto max-h-[200px] w-full max-w-[200px] object-contain"
+                  src={payment.qrImageUrl}
                 />
               ) : (
-                <div className="max-w-sm text-center text-sm leading-6 text-ink-soft">
+                <p className="text-sm leading-6 text-stone">
                   {isCreating
-                    ? "QRIS sedang dibuat."
-                    : "QRIS belum tersedia."}
-                </div>
+                    ? "Preparing your QRIS code..."
+                    : "QRIS is not available yet."}
+                </p>
               )}
             </div>
 
-            <div className="w-full space-y-4 md:w-56">
-              <div className="rounded-[var(--radius-md)] bg-warning-bg p-4">
-                <p className="text-xs font-semibold uppercase text-warning">
-                  Batas waktu
-                </p>
+            <p className="mx-auto mt-7 max-w-[310px] text-xs leading-[1.5] text-stone">
+              Use any banking or e-wallet app that supports QRIS.
+            </p>
 
-                <p className="mt-2 text-2xl font-semibold text-ink">
-                  {countdown}
-                </p>
-              </div>
-
+            {!payment.qrImageUrl && !isCreating ? (
               <StoreButton
-                className="w-full"
-                disabled={
-                  isCreating
-                }
-                onClick={
-                  createQris
-                }
+                className="mt-5 w-full !rounded-[5px]"
+                onClick={createQris}
                 variant="secondary"
               >
-                {isCreating
-                  ? "Memproses..."
-                  : payment.qrImageUrl ||
-                      payment.qrString
-                    ? "Buat ulang QRIS"
-                    : "Buat QRIS"}
+                Generate QRIS
               </StoreButton>
+            ) : null}
+          </section>
 
-              <StoreButton
-                className="w-full"
-                onClick={
-                  refreshStatus
-                }
-                variant="soft"
-              >
-                Cek status
-              </StoreButton>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {payment.paymentStatus ===
-      "PAID" ? (
-        <div className="rounded-[var(--radius-lg)] bg-success-bg p-4 text-sm leading-6 text-success">
-          Pembayaran berhasil.
-          Pesanan masuk ke proses
-          pemenuhan.
-        </div>
-      ) : null}
-
-      {payment.paymentStatus ===
-      "REQUIRES_REVIEW" ? (
-        <div className="rounded-[var(--radius-lg)] bg-warning-bg p-4 text-sm leading-6 text-warning">
-          Pembayaran diterima
-          tetapi perlu pemeriksaan
-          admin sebelum stok atau
-          fulfillment diproses.
-        </div>
-      ) : null}
-
-      {[
-        "EXPIRED",
-        "FAILED",
-        "CANCELLED",
-      ].includes(
-        payment.paymentStatus,
-      ) ? (
-        <div className="rounded-[var(--radius-lg)] bg-danger-bg p-4 text-sm leading-6 text-danger">
-          Pembayaran tidak dapat
-          dilanjutkan. Silakan buat
-          checkout baru jika masih
-          ingin membeli produk ini.
-        </div>
-      ) : null}
-
-      {errorMessage ? (
-        <div className="rounded-[var(--radius-lg)] bg-danger-bg p-4 text-sm leading-6 text-danger">
-          <p>
-            {errorMessage}
-          </p>
+          <section className="mt-7 rounded-[6px] border border-black/15 bg-paper-white p-6 text-left sm:p-7">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-black">
+              How to Pay
+            </h2>
+            <ol className="mt-5 space-y-3 text-sm leading-[1.55] text-stone">
+              <li>1. Open your preferred banking or e-wallet app.</li>
+              <li>2. Select Scan QR / QRIS.</li>
+              <li>3. Scan the QR code above.</li>
+              <li>4. Confirm the payment amount.</li>
+              <li>5. Complete the payment in your app.</li>
+            </ol>
+            <p className="mt-5 text-xs italic leading-[1.5] text-stone">
+              We&apos;ll automatically update your payment status once your
+              payment is confirmed.
+            </p>
+          </section>
 
           <StoreButton
-            className="mt-3"
-            onClick={
-              payment.qrImageUrl
-                ? refreshStatus
-                : createQris
-            }
+            className="mt-7 w-full !rounded-[5px] uppercase tracking-[0.1em]"
+            disabled={isRefreshing}
+            onClick={refreshStatus}
+            size="large"
+          >
+            {isRefreshing ? "Checking..." : "Check Payment Status"}
+          </StoreButton>
+        </>
+      ) : (
+        <div className={getTerminalPanelClasses(payment.paymentStatus)}>
+          <p className="font-medium">{statusCopy.description}</p>
+        </div>
+      )}
+
+      {errorMessage ? (
+        <div className="mt-5 rounded-[5px] border border-black/10 bg-paper-white p-4 text-left text-sm leading-6 text-[var(--color-error)]">
+          <p>{errorMessage}</p>
+          <StoreButton
+            className="mt-3 !rounded-[5px]"
+            onClick={payment.qrImageUrl ? refreshStatus : createQris}
             size="compact"
             variant="secondary"
           >
-            Coba lagi
+            Try Again
           </StoreButton>
         </div>
       ) : null}
     </div>
   );
+}
+
+function getStatusDotClasses(status: PaymentStatus) {
+  if (status === "PAID") {
+    return "size-2 rounded-full bg-[var(--color-success)]";
+  }
+
+  if (["FAILED", "CANCELLED", "EXPIRED"].includes(status)) {
+    return "size-2 rounded-full bg-[var(--color-error)]";
+  }
+
+  return "size-2 rounded-full bg-[#8299A5]";
+}
+
+function getTerminalPanelClasses(status: PaymentStatus) {
+  if (status === "PAID") {
+    return "mt-8 rounded-[5px] bg-success-bg p-5 text-sm leading-6 text-success";
+  }
+
+  if (status === "REQUIRES_REVIEW") {
+    return "mt-8 rounded-[5px] bg-warning-bg p-5 text-sm leading-6 text-warning";
+  }
+
+  return "mt-8 rounded-[5px] bg-danger-bg p-5 text-sm leading-6 text-danger";
 }
 
 function getStatusCopy(

@@ -1,14 +1,17 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { AuthModule } from './auth/auth.module';
 import { CheckoutModule } from './checkout/checkout.module';
 import { validateEnv } from './config/env.schema';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { InventoryModule } from './inventory/inventory.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ProductsModule } from './products/products.module';
 import { ShippingModule } from './shipping/shipping.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -19,9 +22,13 @@ import { ShippingModule } from './shipping/shipping.module';
 
     DatabaseModule,
 
+    AuthModule,
+
     HealthModule,
 
     ProductsModule,
+
+    InventoryModule,
 
     CheckoutModule,
 
@@ -30,6 +37,8 @@ import { ShippingModule } from './shipping/shipping.module';
     OrdersModule,
 
     PaymentsModule,
+
+    UploadsModule,
   ],
 })
 export class AppModule {}

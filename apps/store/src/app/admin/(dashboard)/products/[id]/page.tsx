@@ -12,6 +12,8 @@ import {
   updateProduct,
   updateVariant,
 } from "../../../catalog-actions";
+import { listAdminCategories } from "@/lib/admin/category-api";
+import { getAdminProduct } from "@/lib/admin/product-api";
 import { db } from "@/lib/db";
 import { formatRupiah } from "@/lib/placeholders";
 
@@ -86,29 +88,8 @@ export default async function ProductEditPage({
     discountsResult,
   ] = await Promise.all([
     searchParams,
-    db.query<CategoryRow>(`
-      SELECT id::text, name, "isActive"
-      FROM categories
-      ORDER BY name ASC
-    `),
-    db.query<ProductRow>(
-      `
-        SELECT
-          p.id::text,
-          p."categoryId"::text AS "categoryId",
-          p.slug,
-          p.name,
-          p.description,
-          p."normalPrice",
-          p."isActive",
-          c.name AS "categoryName"
-        FROM products p
-        INNER JOIN categories c ON c.id = p."categoryId"
-        WHERE p.id::text = $1
-        LIMIT 1
-      `,
-      [id],
-    ),
+    listAdminCategories(),
+    getAdminProduct(id),
     db.query<ImageRow>(
       `
         SELECT id::text, url, "altText", "sortOrder", "isPrimary"
@@ -151,8 +132,8 @@ export default async function ProductEditPage({
       [id],
     ),
   ]);
-  const product = productResult.rows[0];
-  const categories = categoriesResult.rows;
+  const product = productResult;
+  const categories = categoriesResult;
   const images = imagesResult.rows;
   const variants = variantsResult.rows;
   const discounts = discountsResult.rows;

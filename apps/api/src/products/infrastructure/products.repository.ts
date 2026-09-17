@@ -52,9 +52,181 @@ export type ProductForImageManagement = {
   name: string;
 };
 
+export type AdminCategoryRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  productCount: number;
+};
+
+export type AdminProductRow = {
+  id: string; categoryId: string; slug: string; name: string; description: string;
+  normalPrice: number; isActive: boolean; categoryName: string;
+  variantCount: number; totalStock: number; activeDiscountCount: number; imageCount: number;
+};
+
 @Injectable()
 export class ProductsRepository {
   constructor(private readonly database: DatabaseService) {}
+
+  async listAdminCategories(): Promise<AdminCategoryRow[]> {
+    const result = await this.database.query<AdminCategoryRow>(
+      this.adminCategoriesQuery(),
+    );
+    return result.rows;
+  }
+
+  async findAdminCategory(categoryId: string): Promise<AdminCategoryRow | null> {
+    const result = await this.database.query<AdminCategoryRow>(
+      this.adminCategoriesQuery('WHERE c.id::text = $1'),
+      [categoryId],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async findAdminCategoryBySlug(slug: string): Promise<{ id: string } | null> {
+    const result = await this.database.query<{ id: string }>(
+      `SELECT id::text AS id FROM categories WHERE slug = $1 LIMIT 1`,
+      [slug],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async createAdminCategory(input: {
+    name: string;
+    slug: string;
+    description?: string;
+    isActive: boolean;
+  }): Promise<AdminCategoryRow> {
+    const result = await this.database.query<AdminCategoryRow>(
+      `
+        WITH created AS (
+          INSERT INTO categories (id, slug, name, description, "isActive")
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING id
+        )
+        ${this.adminCategoriesQuery('WHERE c.id = (SELECT id FROM created)')}
+      `,
+      [
+        randomUUID(),
+        input.slug,
+        input.name,
+        input.description ?? null,
+        input.isActive,
+      ],
+    );
+    return result.rows[0]!;
+  }
+
+  async updateAdminCategory(
+    categoryId: string,
+    input: {
+      name: string;
+      slug: string;
+      description?: string;
+      isActive: boolean;
+    },
+  ): Promise<AdminCategoryRow | null> {
+    const result = await this.database.query<AdminCategoryRow>(
+      `
+        WITH updated AS (
+          UPDATE categories
+          SET name = $2, slug = $3, description = $4, "isActive" = $5,
+              "updatedAt" = NOW()
+          WHERE id::text = $1
+          RETURNING id
+        )
+        ${this.adminCategoriesQuery('WHERE c.id = (SELECT id FROM updated)')}
+      `,
+      [
+        categoryId,
+        input.name,
+        input.slug,
+        input.description ?? null,
+        input.isActive,
+      ],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async deleteAdminCategory(categoryId: string): Promise<void> {
+    await this.database.query(`DELETE FROM categories WHERE id::text = $1`, [
+      categoryId,
+    ]);
+  }
+
+  async listAdminProducts(input: { page: number; q?: string; status?: boolean }): Promise<{ products: AdminProductRow[]; total: number }> {
+    const filters: string[] = []; const values: unknown[] = [];
+    if (input.status !== undefined) { values.push(input.status); filters.push(`p."isActive" = $${values.length}`); }
+    if (input.q?.trim()) { values.push(`%${input.q.trim()}%`); filters.push(`(p.name ILIKE $${values.length} OR p.slug ILIKE $${values.length})`); }
+    const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+    const limit = 8; values.push(limit, (input.page - 1) * limit);
+    const [rows, count] = await Promise.all([
+      this.database.query<AdminProductRow>(`${this.adminProductsQuery(where)} LIMIT $${values.length - 1} OFFSET $${values.length}`, values),
+      this.database.query<{ total: number }>(`SELECT count(*)::integer AS total FROM products p ${where}`, values.slice(0, -2)),
+    ]);
+    return { products: rows.rows, total: count.rows[0]?.total ?? 0 };
+  }
+
+  async findAdminProduct(id: string): Promise<AdminProductRow | null> {
+    const result = await this.database.query<AdminProductRow>(this.adminProductsQuery('WHERE p.id::text = $1'), [id]);
+    return result.rows[0] ?? null;
+  }
+
+  async findAdminProductBySlug(slug: string): Promise<{ id: string } | null> {
+    const result = await this.database.query<{ id: string }>('SELECT id::text AS id FROM products WHERE slug = $1 LIMIT 1', [slug]);
+    return result.rows[0] ?? null;
+  }
+
+  async findAdminVariantBySku(sku: string): Promise<{ id: string } | null> {
+    const result = await this.database.query<{ id: string }>('SELECT id::text AS id FROM product_variants WHERE sku = $1 LIMIT 1', [sku]);
+    return result.rows[0] ?? null;
+  }
+
+  async createAdminProduct(input: { categoryId: string; slug: string; name: string; description: string; normalPrice: number; isActive: boolean; initialVariant?: { sku: string; colorName: string; colorHex?: string; size: string; weightGram: number; stock: number; isActive: boolean }; initialDiscount?: { type: 'PERCENTAGE' | 'FIXED_AMOUNT'; value: number; startsAt: string; endsAt: string; isActive: boolean } }): Promise<AdminProductRow> {
+    const id = randomUUID();
+    await this.database.withTransaction(async (client) => {
+      await client.query('INSERT INTO products (id, "categoryId", slug, name, description, "normalPrice", "isActive") VALUES ($1, $2, $3, $4, $5, $6, $7)', [id, input.categoryId, input.slug, input.name, input.description, input.normalPrice, input.isActive]);
+      if (input.initialVariant) await client.query('INSERT INTO product_variants (id, "productId", sku, "colorName", "colorHex", size, "weightGram", stock, "isActive") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [randomUUID(), id, input.initialVariant.sku, input.initialVariant.colorName, input.initialVariant.colorHex ?? null, input.initialVariant.size, input.initialVariant.weightGram, input.initialVariant.stock, input.initialVariant.isActive]);
+      if (input.initialDiscount) await client.query('INSERT INTO discounts (id, "productId", type, value, "startsAt", "endsAt", "isActive") VALUES ($1,$2,$3::"DiscountType",$4,$5,$6,$7)', [randomUUID(), id, input.initialDiscount.type, input.initialDiscount.value, input.initialDiscount.startsAt, input.initialDiscount.endsAt, input.initialDiscount.isActive]);
+    });
+    return (await this.findAdminProduct(id))!;
+  }
+
+  async updateAdminProduct(id: string, input: { categoryId: string; slug: string; name: string; description: string; normalPrice: number; isActive: boolean }): Promise<AdminProductRow | null> {
+    const result = await this.database.query<{ id: string }>('UPDATE products SET "categoryId"=$2, slug=$3, name=$4, description=$5, "normalPrice"=$6, "isActive"=$7, "updatedAt"=NOW() WHERE id::text=$1 RETURNING id::text AS id', [id, input.categoryId, input.slug, input.name, input.description, input.normalPrice, input.isActive]);
+    return result.rows[0] ? this.findAdminProduct(id) : null;
+  }
+
+  async updateAdminProductStatus(id: string, isActive: boolean): Promise<AdminProductRow | null> {
+    const result = await this.database.query<{ id: string }>('UPDATE products SET "isActive" = $2, "updatedAt" = NOW() WHERE id::text = $1 RETURNING id::text AS id', [id, isActive]);
+    return result.rows[0] ? this.findAdminProduct(id) : null;
+  }
+
+  async deleteAdminProduct(id: string): Promise<void> { await this.database.query('DELETE FROM products WHERE id::text = $1', [id]); }
+
+  private adminProductsQuery(where = ''): string {
+    return `SELECT p.id::text AS id, p."categoryId"::text AS "categoryId", p.slug, p.name, p.description, p."normalPrice" AS "normalPrice", p."isActive" AS "isActive", c.name AS "categoryName", COALESCE(v."variantCount", 0)::integer AS "variantCount", COALESCE(v."totalStock", 0)::integer AS "totalStock", COALESCE(d."activeDiscountCount", 0)::integer AS "activeDiscountCount", COALESCE(i."imageCount", 0)::integer AS "imageCount" FROM products p INNER JOIN categories c ON c.id = p."categoryId" LEFT JOIN LATERAL (SELECT COUNT(*)::integer AS "variantCount", COALESCE(SUM(stock), 0)::integer AS "totalStock" FROM product_variants WHERE "productId" = p.id) v ON true LEFT JOIN LATERAL (SELECT COUNT(*)::integer AS "activeDiscountCount" FROM discounts WHERE "productId" = p.id AND "isActive" = true) d ON true LEFT JOIN LATERAL (SELECT COUNT(*)::integer AS "imageCount" FROM product_images WHERE "productId" = p.id) i ON true ${where} ORDER BY p."updatedAt" DESC`;
+  }
+
+  private adminCategoriesQuery(whereClause = ''): string {
+    return `
+      SELECT
+        c.id::text AS id,
+        c.slug,
+        c.name,
+        c.description,
+        c."isActive" AS "isActive",
+        COUNT(p.id)::integer AS "productCount"
+      FROM categories c
+      LEFT JOIN products p ON p."categoryId" = c.id
+      ${whereClause}
+      GROUP BY c.id, c.slug, c.name, c.description, c."isActive"
+      ORDER BY c.name ASC
+    `;
+  }
 
   async findActiveProducts(limit?: number): Promise<ProductRow[]> {
     const result = await this.database.query<ProductRow>(

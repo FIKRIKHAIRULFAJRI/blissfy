@@ -5,18 +5,9 @@ import {
   deleteCategory,
   updateCategory,
 } from "../../catalog-actions";
-import { db } from "@/lib/db";
+import { listAdminCategories } from "@/lib/admin/category-api";
 
 export const dynamic = "force-dynamic";
-
-type CategoryRow = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string | null;
-  isActive: boolean;
-  productCount: string;
-};
 
 type CategoriesPageProps = {
   searchParams?: Promise<{
@@ -28,23 +19,10 @@ type CategoriesPageProps = {
 export default async function AdminCategoriesPage({
   searchParams,
 }: CategoriesPageProps) {
-  const [params, categories] = await Promise.all([
+  const [params, categoryRows] = await Promise.all([
     searchParams,
-    db.query<CategoryRow>(`
-      SELECT
-        c.id::text,
-        c.slug,
-        c.name,
-        c.description,
-        c."isActive",
-        COUNT(p.id)::text AS "productCount"
-      FROM categories c
-      LEFT JOIN products p ON p."categoryId" = c.id
-      GROUP BY c.id, c.slug, c.name, c.description, c."isActive"
-      ORDER BY c.name ASC
-    `),
+    listAdminCategories(),
   ]);
-  const categoryRows = categories.rows;
 
   return (
     <div className="space-y-8">

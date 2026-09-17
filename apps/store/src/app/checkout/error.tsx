@@ -1,46 +1,35 @@
 "use client";
 
-import Link from "next/link";
-
 import { StoreFooter } from "@/components/store/StoreFooter";
+import { StoreHeader } from "@/components/store/StoreHeader";
 import { StoreButton } from "@/components/store/ui/StoreButton";
 
 export default function CheckoutError({ reset }: { reset: () => void }) {
   return (
     <>
-      <header className="border-b border-border bg-surface">
-        <div className="container-page flex min-h-16 items-center justify-between gap-4">
-          <Link className="text-xl font-semibold text-ink" href="/">
-            Blissfy.co
-          </Link>
-
-          <span className="text-sm font-semibold text-ink-soft">
-            Checkout aman
-          </span>
+      <StoreHeader variant="editorial" />
+      <main className="bg-bone text-black" id="main-content">
+        <div className="container-page pb-[72px] pt-[30px] md:pb-24 md:pt-12 lg:pb-[120px]">
+          <section className="mx-auto max-w-[760px] rounded-[10px] border border-black/10 bg-paper-white p-8 text-center md:p-12">
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone">
+              Checkout
+            </p>
+            <h1 className="mt-4 text-[32px] font-semibold leading-[1.1] tracking-[-0.025em] text-black md:text-[38px]">
+              Checkout could not be loaded
+            </h1>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-[1.6] text-stone">
+              Refresh the checkout and make sure your bag still contains a
+              valid selected item.
+            </p>
+            <StoreButton className="mt-7" onClick={reset} variant="primary">
+              Try Again
+            </StoreButton>
+          </section>
         </div>
-      </header>
-
-      <main className="container-page py-10 md:py-14" id="main-content">
-        <section className="rounded-[var(--radius-xl)] border border-danger/30 bg-danger-bg p-8 text-center md:p-12">
-          <h1 className="text-2xl font-semibold text-danger">
-            Checkout belum dapat dimuat
-          </h1>
-
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-danger">
-            Muat ulang halaman dan pastikan keranjang masih berisi item valid.
-          </p>
-
-          <StoreButton
-            className="mt-6"
-            onClick={reset}
-            variant="secondary"
-          >
-            Coba lagi
-          </StoreButton>
-        </section>
       </main>
-
-      <StoreFooter />
+      <div className="flow-root bg-bone">
+        <StoreFooter variant="editorial" />
+      </div>
     </>
   );
 }

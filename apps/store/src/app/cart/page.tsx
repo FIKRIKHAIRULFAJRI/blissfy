@@ -12,11 +12,15 @@ export const metadata: Metadata = {
 export default function CartPage() {
   return (
     <>
-      <StoreHeader />
-      <main className="container-page py-10 md:py-14" id="main-content">
-        <CartView />
+      <StoreHeader variant="editorial" />
+      <main className="bg-bone text-black" id="main-content">
+        <div className="container-page pb-[72px] pt-[30px] md:pb-24 md:pt-12 lg:pb-[120px] lg:pt-16">
+          <CartView />
+        </div>
       </main>
-      <StoreFooter />
+      <div className="flow-root bg-bone">
+        <StoreFooter variant="editorial" />
+      </div>
     </>
   );
 }

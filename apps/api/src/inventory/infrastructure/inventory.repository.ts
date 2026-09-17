@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 
 type AvailabilityRow = {
   variantId: string;
@@ -38,5 +39,49 @@ export class InventoryRepository {
     );
 
     return result.rows;
+  }
+
+  async adjustStock(
+    variantId: string,
+    adjustment: number,
+    reason: string,
+  ): Promise<{
+    variantId: string;
+    previousStock: number;
+    newStock: number;
+  } | null> {
+    return this.database.withTransaction(async (client) => {
+      const locked = await client.query<{ stock: number }>(
+        `SELECT stock FROM product_variants WHERE id::text = $1 FOR UPDATE`,
+        [variantId],
+      );
+      const variant = locked.rows[0];
+      
+      if (!variant) {
+        return null;
+      }
+      
+      const nextStock = variant.stock + adjustment;
+      
+      if (nextStock < 0) {
+        throw new ConflictException('Adjustment membuat stok menjadi negatif.');
+      }
+      
+      await client.query(
+        `UPDATE product_variants SET stock = $2, "updatedAt" = NOW() WHERE id::text = $1`,
+        [variantId, nextStock],
+      );
+      
+      await client.query(
+        `INSERT INTO inventory_movements ("variantId", type, "quantityDelta", note) VALUES ($1, 'ADJUSTMENT', $2, $3)`,
+        [variantId, adjustment, reason.trim()],
+      );
+      
+      return {
+        variantId,
+        previousStock: variant.stock,
+        newStock: nextStock,
+      };
+    });
   }
 }
